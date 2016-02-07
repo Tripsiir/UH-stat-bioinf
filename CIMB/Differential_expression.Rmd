@@ -2,7 +2,9 @@
 title: "Computer Intensive Methods for Bioinformatics - Homework 1"
 author: "Pieter Moris"
 date: "17 november 2015"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 #Question 1: Permutations P-value
