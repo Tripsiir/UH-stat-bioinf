@@ -22,16 +22,34 @@ We will employ hierarchical clustering to group the chemical compounds based on 
 Let's take a look at the chemical fingerprints first. Here is a sneak peak at the data:
 
     ##                  -2147375257 -2147119955 -2146474760 -2145840573
-    ## metformin              FALSE       FALSE       FALSE       FALSE
-    ## phenformin             FALSE       FALSE       FALSE       FALSE
-    ## phenyl biguanide       FALSE       FALSE       FALSE       FALSE
-    ## estradiol              FALSE       FALSE       FALSE       FALSE
-    ## dexamethasone          FALSE       FALSE       FALSE       FALSE
-    ## verapamil              FALSE       FALSE       FALSE       FALSE
+    ## metformin                  0           0           0           0
+    ## phenformin                 0           0           0           0
+    ## phenyl biguanide           0           0           0           0
+    ## estradiol                  0           0           0           0
+    ## dexamethasone              0           0           0           0
+    ## verapamil                  0           0           0           0
+
+To properly cluster objects based on binary attributes, we need to define an adequate measure of similarity The *Tanimoto coefficient* (sometimes called the *Jaccard coefficient*) is often used for this purpose in cheminformatics ([MacCuish and MacCuish, 2011](#chem)). It contrasts two objects in terms of the number of common attributes, *c*, with the number of attributes unique to either object, *a* and *b*. \[i^n X_i\]
+
+Promising reading materials
+---------------------------
+
+-   [Use of chemical similarity in drug discovery](http://mcc.irb.hr/mcc_04/presentations/butina_d_mcc04_2.pdf)
+-   [ChemmineR](https://www.bioconductor.org/packages/3.3/bioc/vignettes/ChemmineR/inst/doc/ChemmineR.html#introduction) and [tutorial](http://chemmine.ucr.edu/help/):
+    -   contains modules for similarity searching of chemical compounds (Tanimoto coefficient)
+    -   clustering of compounds by structural and physicochemical similarities is a powerful approach for correlating structural features of compounds with their activities
+-   [textbook on clustering in drug discovery](https://books.google.be/books?id=ZDDNBQAAQBAJ&pg=PA41&lpg=PA41&dq=tanimoto+clustering&source=bl&ots=vsLen2ZmS5&sig=N16boAKkB5NWLJjeteC4shM6Brc&hl=en&sa=X&ved=0ahUKEwiaiZvsx4vLAhWBfxoKHf-9DrwQ6AEISzAH#v=onepage&q=tanimoto%20clustering&f=false)
+-   Some cross-validated links:
+    -   [frequent item set better than clustering?](https://stats.stackexchange.com/questions/86318/clustering-a-binary-matrix)
+    -   [ordinal vs nominal binary](https://stats.stackexchange.com/questions/116856/hierarchical-or-two-step-cluster-analysis-for-binary-data?rq=1)
+    -   [hierarchical clustering](https://stats.stackexchange.com/questions/2717/clustering-with-a-distance-matrix?rq=1)
+    -   [more clustering options for boolean](https://stats.stackexchange.com/questions/70113/cluster-large-boolean-dataset?rq=1)
 
 References
 ----------
 
 <a name="lamb"></a>- Lamb, J. 2006. "The Connectivity Map: Using Gene-Expression Signatures To Connect Small Molecules, Genes, And Disease". Science 313 (5795): 1929-1935. <doi:10.1126/science.1132939>.
+
+<a name="chem"></a>- MacCuish, John D, and Norah E MacCuish. 2011. Clustering In Bioinformatics And Drug Discovery. Boca Raton: Taylor & Francis.
 
 <a name="zang"></a> - Zhang, Shu-Dong, and Timothy W Gant. 2008. "A Simple And Robust Method For Connecting Small-Molecule Drugs Using Gene-Expression Signatures". BMC Bioinformatics 9 (1): 258. <doi:10.1186/1471-2105-9-258>.
