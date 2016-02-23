@@ -1,19 +1,21 @@
 ---
 title: "Connectivity scores"
 author: "Pieter Moris"
-date: "21 februari 2016"
+date: "`r format(Sys.Date())`"
 output: 
   html_document:
     keep_md: yes
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE,cache=FALSE}
 knitr::opts_chunk$set(echo = TRUE,cache = TRUE,error=TRUE)
+set.seed(718453)
 ```
 
 ## Unraveling the connection between chemical structure and gene expression.
 
-The aim of this analysis is to investigate the association between the structure of chemical compounds (or their predicted biological activity) and the effects they induce in a gene expression assay. We will group compounds with a similar structure (*chemical fingerprint*) or predicted bioactivity (*target prediction*) using clustering methods. Subsequently the *gene expression profiles* of the compounds within a cluster will be contrasted with each other using a connectivity score approach based on the work of [Lamb et al. (2006)](#lamb) and [Zhang & Gant (2008)](#zang) on the [Connectivity Map](https://www.broadinstitute.org/cmap/). 
+The aim of this analysis is to investigate the association between the structure of chemical compounds (or their predicted biological activity) and the effects they induce in a gene expression assay. We will group compounds with a similar structure (*chemical fingerprint*) or predicted bioactivity (*target prediction*) using clustering methods. Subsequently the *gene expression profiles* of the compounds within a cluster will be contrasted with each other using a connectivity score approach based on the work of @lamb_connectivity_2006 and @zhang_simple_2008 on the [Connectivity Map](https://www.broadinstitute.org/cmap/). 
 
 Their methods enable us to contrast a number of query expression profiles with a set of reference profiles and assess the *connectivity* between compounds in terms of which genes are regulated up or down. The connection between the query and reference data can be both positive and negative. In the former case, highly up-regulated genes in one set will also be up-regulated in the other set, and vice versa for down-regulated genes. In the latter case, genes with a high expression in one assay, might be strongly down-regulated in the other one. Both situations imply that the two compounds interfere with the same biological processes. If two sets are weakly connected, there is no correlation or overlap between the top genes of either set.
 
@@ -21,7 +23,7 @@ We will use an extension of these methods that scores the connectivity between g
 
 *To do: description and origins of dataset + further explanation of MFA*
 
-## Clustering chemical compounds
+## Clustering chemical compounds based on chemical fingerprints
 We will employ hierarchical clustering to group the chemical compounds based on their fingerprints or target predictions. In either case we are dealing with a 0/1 matrix where the rows correspond to different compounds. For the chemical fingerprints the columns indicate the presence or absence of specific chemical structures. Together this sequence of ones and zeros describes the entire molecular scaffolding of the compound. In essence we are dealing with a bit string for each compound.
 
 *To do: add description of bioactivity matrix + describe dimensions of data.*
@@ -34,7 +36,7 @@ fingerprintMat <- fingerprintMat*1 # convert logical matrix to binary integer ma
 head(fingerprintMat[,1:4])
 ```
 
-To properly cluster objects based on binary attributes, we need to define an adequate measure of similarity The *Tanimoto coefficient* (sometimes called the *Jaccard coefficient*) is often used for this purpose in cheminformatics ([MacCuish and MacCuish, 2011](#chem)). It contrasts two objects *x* and *y* of dimension *k* in terms of the number of common attributes, *c*, with the number of attributes unique to either object, *a* and *b*. $$s = \frac{c}{a+b-c} = \frac{\sum_{i=1}^k x_i y_i}{\sum_{i=1}^k a_i^2}$$.
+To properly cluster objects based on binary attributes, we need to define an adequate measure of similarity The *Tanimoto coefficient* (sometimes called the *Jaccard coefficient*) is often used for this purpose in cheminformatics [[@maccuish_clustering_2011]](#chem). It contrasts two objects *x* and *y* of dimension *k* in terms of the number of common attributes, *c*, with the number of attributes unique to either object, *a* and *b*. $$s = \frac{c}{a+b-c}$$
 
 *To do: difference in definitions of Tanimoto, jaccard and soergel distance!*
 
@@ -73,38 +75,98 @@ test.dist.fingerprintMat <- as.matrix(dist(fingerprintMat,method = 'binary'))
 # test.dist.fingerprintMat == dist.fingerprintMat
 ```
 
-Now we can go ahead and try to cluster these compounds based on their chemical fingerprints. We will use the `hclust` function provided by `R` which implements a basic hierarchical clustering analysis.
+Now we can go ahead and try to cluster these compounds based on their chemical fingerprints. We will use the `agnes` function provided by the `cluster` package, which implements a basic agglomerative hierarchical clustering analysis. Agglomerative hierarchical clustering attempts to form groups of similar objects from a bottom-up approach (as opposed to divisve methods). It starts by assigning each observation to its own cluster. Then, an hierarchy is created by repeatedly merging pairs of clusters at lower levels until a single cluster is reached at the top level. Not only do we need an appropriate measure of distance, like the Tanimoto distance, but we also need to choose an agglomeration method. This method will define how the distance between clusters is calculated: e.g. do we only look at the largest distance between its members or do we take the average of all pairwise distances? For this analysis we will choose the average method, which strikes a compromise between compactness and closeness of the clusters.
 
-**To do: which agglomeration method should I use? complete is the default option, but I believe Woud mentioned average during the meeting?**
-**Agglomerative vs regular hierarchical clustering?**
-Other clustering options in R specifically designed for the comparison of chemical structures are described in [ChemmineR](https://www.bioconductor.org/packages/3.3/bioc/vignettes/ChemmineR/inst/doc/ChemmineR.html#clustering-identical-or-very-similar-compounds)
+By applying this method to the Tanimoto distance matrix of the compound chemical fingerprints we obtain the following dendogram. Note that the height of each node signifies the dissimilarity between its daughter clusters.
+
 
 ```{r,fig.width=8, fig.height=8}
-cluster.fingerprintMat <- hclust(as.dist(dist.fingerprintMat), method = "average")
-plot(cluster.fingerprintMat,main='Hierarchical clustering of compounds based on their chemical fingerprints',hang=-1,col = "#487AA1", col.main = "#F38630", col.lab = "#F38630", col.axis = "#7C8071",xlab="Compounds",sub="", lwd = 2)
+### Base R method:
+# cluster.fingerprintMat <- hclust(as.dist(dist.fingerprintMat), method = "average")
+# plot(cluster.fingerprintMat,main='Hierarchical clustering of compounds based on their chemical fingerprints',hang=-1,col = "#487AA1", col.main = "#F38630", col.lab = "#F38630", col.axis = "#7C8071",xlab="Compounds",sub="", lwd = 2)
+# axis(side = 2, at = seq(0, 400, 100), col = "#F38630", labels = TRUE, lwd = 2)
+
+library(cluster)
+cluster.fingerprintMat <- agnes(as.dist(dist.fingerprintMat),method = "average")
+# plot(cluster.fingerprintMat,which.plots = 2)
+pltree(cluster.fingerprintMat,main='Hierarchical clustering of compounds based on their chemical fingerprints',hang=-1,col = "#487AA1", col.main = "#F38630", col.lab = "#F38630", col.axis = "#7C8071",xlab="Compounds",sub="", lwd = 2) # calls as.hclust plot method
 axis(side = 2, at = seq(0, 400, 100), col = "#F38630", labels = TRUE, lwd = 2)
 ```
 
-Next, we need to decide on an appropriate number of clusters and prune the tree to this size. For example, let's say we opt for ten clusters in total.
+Next, we need to decide on an appropriate number of clusters and prune the tree to this size. This is different from other cluster methods, such as k-means clustering, where the number of clusters is defined beforehand. For example, let's say we opt for ten clusters in total:
 
 ```{r,fig.width=8, fig.height=8}
-plot(cluster.fingerprintMat,main='Hierarchical clustering of compounds based on their chemical fingerprints',hang=-1,col = "#487AA1", col.main = "#F38630", col.lab = "#F38630", col.axis = "#7C8071",xlab="Compounds",sub="", lwd = 2)
+pltree(cluster.fingerprintMat,main='Hierarchical clustering of compounds based on their chemical fingerprints',hang=-1,col = "#487AA1", col.main = "#F38630", col.lab = "#F38630", col.axis = "#7C8071",xlab="Compounds",sub="", lwd = 2) # calls as.hclust plot method
+axis(side = 2, at = seq(0, 400, 100), col = "#F38630", labels = TRUE, lwd = 2)
 rect.hclust(cluster.fingerprintMat,k=10)
-# define groups using groups <- cutree(hc, k = 3)
+```
+In practise it is better to define the number of clusters based on the distance between certain groups. The Gap statistic can be used to make a more informed decision about this [@hastie_elements_2009-1]. The `cluster` package provides a method to calculate the Gap statistic using a bootstrap approach. Visually we are looking for a kink or elbow in a plot of the gap statistic versus the number of clusters. This indicates that the decrease in within-cluster similarity is leveling off. More formally we will rely on the `TibshiraniSEmax` criterium.
+
+```{r}
+FUNcluster = function(x,k,inputcluster){
+  # Function that requires the original observations (x), 
+  # the number of desired clusters (k),
+  # and a cluster object 
+	out = list( cluster = cutree(inputcluster,k=k))
+	return(out)
+}
+gap <- clusGap(fingerprintMat,FUNcluster = FUNcluster,inputcluster=cluster.fingerprintMat,K.max = 20,B = 500)
+plot(gap)
+gapdata <- as.data.frame(gap$Tab)
+maxSE(gapdata[,3],gapdata[,4],"Tibs2001SEmax")
+
+gap <- clusGap(fingerprintMat,FUNcluster = FUNcluster,inputcluster=cluster.fingerprintMat,K.max = 30,B = 500)
+plot(gap)
+gapdata <- as.data.frame(gap$Tab)
+maxSE(gapdata[,3],gapdata[,4],"Tibs2001SEmax")
+maxSE(gapdata[,3],gapdata[,4],"firstSEmax")
+maxSE(gapdata[,3],gapdata[,4],"globalSEmax")
+maxSE(gapdata[,3],gapdata[,4],"firstmax")
+maxSE(gapdata[,3],gapdata[,4],"globalmax")
+
+iris.cluster <- agnes(iris[1:4],diss = F,metric = "euclidian",method="average")
+iris.gap <- clusGap(iris[1:4],FUNcluster = FUNcluster,inputcluster=iris.cluster,K.max = 10,B = 500)
+plot(iris.gap)
+iris.gapdata <- as.data.frame(iris.gap$Tab)
+maxSE(iris.gapdata[,3],iris.gapdata[,4],"Tibs2001SEmax")
 ```
 
-In practise it is better to define the number of clusters based on the distance between certain groups.
+We can also inspect how many entries are in each cluster for various cluster sizes.
 
-**To do: find appropriate method to decide on cluster size! see: http://www2.stat.unibo.it/montanari/Didattica/Multivariate/CA_lab.pdf **
+```{r}
+# http://www.stat.berkeley.edu/~s133/Cluster2a.html
+counts = sapply(2:15,function(ncl)table(cutree(cluster.fingerprintMat,ncl)))
+names(counts) = 2:15
+counts
+```
+
+***
+**To do:**
+- gap statistic suggests 1 cluster...function seems to work fine for iris dataset (5 clusters instead of 3 though), but shape looks OK.
+- alternative clustering methods: https://stat.ethz.ch/R-manual/R-devel/library/cluster/html/mona.html
+- chemmineR
+***
 
 ## Connectivity scoring using multiple factor analysis
 
-Now that we have identified clusters of compounds that are similar in their structure (chemical fingerprint), we will investigate whether or not they are also similar according to the gene expression profiles they induce *in vitro*. To do this, we will use MFA to compare the gene expression profile of a certain compound (the query) with the profiles of all the other compounds in its cluster (the reference database). This will be done once for each compound in a cluster, for every cluster we defined earlier. 
+Now that we have identified clusters of compounds that are similar in their structure (chemical fingerprint), we will investigate whether or not they are also similar according to the gene expression profiles they induce *in vitro*. To do this, we will use MFA to compare the gene expression profile of a certain compound (the query) with the profiles of all the other compounds in its cluster (the reference database), i.e. a leave-one-out approach. This will be done once for each compound in a cluster, for every cluster we defined earlier. Afterwards, it might also be interesting to contrast entire clusters with one another, i.e. by using one cluster as a query dataset and comparing it with the other clusters, i.e. a leave-one-cluster-out method.
 
-**Is this correct? Will I always be comparing 1 query with a reference dataset of size x (being the cluster)?**
-**Or should I use an entire cluster as a reference database and all the 56 compounds together as a query dataset? Or vice versa?**
+**Question isn't just if compounds in a cluster are similar, but if they are similar because the same genes are being regulated in the same way!**
 
-Afterwards, it might also be interesting to contrast entire clusters with one another, i.e. by using one cluster as a query dataset and **another one as the reference dataset/all the other compounds as the reference?**
+**Using k = 13 for now...**
+
+```{r,message=F}
+library(CSFA)
+cut.cluster.fingerprintMat <- cutree(cluster.fingerprintMat,k=13)
+
+# fingerprintMat[cut.cluster.fingerprintMat==2,]
+# 
+# clusterCols <- rainbow(length(unique(cut.cluster.fingerprintMat)))
+# 
+# myClusterSideBar <- clusterCols[cut.cluster.fingerprintMat]
+# 
+# fingerprintMat[,cut.cluster.fingerprintMat]
+```
 
 ## Promising reading materials
 
@@ -121,10 +183,4 @@ Afterwards, it might also be interesting to contrast entire clusters with one an
 - References for clustering:
     + http://handsondatascience.com/ClustersO.pdf
 
-## References
-<a name="lamb"></a>- Lamb, J. 2006. "The Connectivity Map: Using Gene-Expression Signatures To Connect Small Molecules, Genes, And Disease". Science 313 (5795): 1929-1935. doi:10.1126/science.1132939.
-
-<a name="chem"></a>- MacCuish, John D, and Norah E MacCuish. 2011. Clustering In Bioinformatics And Drug Discovery. Boca Raton: Taylor & Francis.
-
-<a name="zang"></a> - Zhang, Shu-Dong, and Timothy W Gant. 2008. "A Simple And Robust Method For Connecting Small-Molecule Drugs Using Gene-Expression Signatures". BMC Bioinformatics 9 (1): 258. doi:10.1186/1471-2105-9-258.
-
+# References
