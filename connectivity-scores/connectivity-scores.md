@@ -305,16 +305,87 @@ Now that we have identified clusters of compounds that are similar in their stru
 
 
 ```r
+# Loop framework to use later...
 library(CSFA)
-cut.cluster.fingerprintMat <- cutree(cluster.fingerprintMat,k=13)
 
-# fingerprintMat[cut.cluster.fingerprintMat==2,]
+cut.cluster.fingerprintMat <- cutree(cluster.fingerprintMat,k=13) # get vector with cluster membership for compounds
+
+n.cluster <- unique(cut.cluster.fingerprintMat) # number of clusters
+
+connectivity.fingerprint <- vector('list',length(n.cluster)) # initialize list to store connectivity scores
+for (i in n.cluster) {
+  compounds.in.cluster <- rownames(fingerprintMat[cut.cluster.fingerprintMat==i,,drop=F])
+  connectivity.fingerprint[[i]] <- sapply( c('average',compounds.in.cluster), function(j) NULL)
+  connectivity.fingerprint[[i]][['compounds']] <- compounds.in.cluster
+}
+
+for (i in connectivity.fingerprint) { # loop through clusters
+  for (j in i$compounds) { # loop through compounds in a cluster
+    # implement check if cluster size is 1...
+    refMat <- geneMat[,i$compounds[i$compounds!=j]]
+    querMat <- geneMat[,i$compounds[i$compounds==j],drop=F]
+    
+    # MFA.fingerprint <- CSanalysis(refMat,querMat,"CSmfa",which=c(),factor.plot=1) 
+    # extract relevant information and
+    # store this in list for each compound for each cluster
+  }
+}
+
+# lapply(connectivity.fingerprint, function(i) connectivity.fingerprint[[i]]<- 1 )
+# connectivity.fingerprint
+# 
+# sapply(n.cluster, function(i) i )
+# 
+# rownames(fingerprintMat[cut.cluster.fingerprintMat==2,])
 # 
 # clusterCols <- rainbow(length(unique(cut.cluster.fingerprintMat)))
 # 
 # myClusterSideBar <- clusterCols[cut.cluster.fingerprintMat]
 # 
 # fingerprintMat[,cut.cluster.fingerprintMat]
+```
+
+Trying out MFA...
+
+
+```r
+library(CSFA)
+refMat <- geneMat[,connectivity.fingerprint[[2]]$compounds[connectivity.fingerprint[[2]]$compounds!="phenformin"]]
+querMat <- geneMat[,connectivity.fingerprint[[2]]$compounds[connectivity.fingerprint[[2]]$compounds=="phenformin"],drop=F]
+
+MFA.fingerprint <- CSanalysis(refMat,querMat,"CSmfa",which=c(),factor.plot=1) 
+```
+
+```
+## Echoufier Rv Correlation:
+##           Reference     Query       MFA
+## Reference 1.0000000 0.1311387 0.8652661
+## Query     0.1311387 1.0000000 0.6104534
+## MFA       0.8652661 0.6104534 1.0000000
+```
+
+```
+## Error in if (x < 0) {: missing value where TRUE/FALSE needed
+```
+
+```r
+library(FactoMineR)
+
+# MFA2 <- MFA()
+
+CSloadings_ref <- MFA.fingerprint@CS$CS.ref
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'MFA.fingerprint' not found
+```
+
+```r
+CSloadings_query <- MFA.fingerprint@CS$CS.query
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'MFA.fingerprint' not found
 ```
 
 ## Promising reading materials

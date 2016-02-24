@@ -11,7 +11,7 @@
 
 <meta name="author" content="Pieter Moris" />
 
-<meta name="date" content="2016-02-23" />
+<meta name="date" content="2016-02-24" />
 
 <title>Connectivity scores</title>
 
@@ -111,7 +111,7 @@ $(document).ready(function () {
 
 <h1 class="title">Connectivity scores</h1>
 <h4 class="author"><em>Pieter Moris</em></h4>
-<h4 class="date"><em>2016-02-23</em></h4>
+<h4 class="date"><em>2016-02-24</em></h4>
 
 </div>
 
@@ -301,16 +301,64 @@ counts</code></pre>
 <p>Now that we have identified clusters of compounds that are similar in their structure (chemical fingerprint), we will investigate whether or not they are also similar according to the gene expression profiles they induce <em>in vitro</em>. To do this, we will use MFA to compare the gene expression profile of a certain compound (the query) with the profiles of all the other compounds in its cluster (the reference database), i.e. a leave-one-out approach. This will be done once for each compound in a cluster, for every cluster we defined earlier. Afterwards, it might also be interesting to contrast entire clusters with one another, i.e. by using one cluster as a query dataset and comparing it with the other clusters, i.e. a leave-one-cluster-out method.</p>
 <p><strong>Question isn’t just if compounds in a cluster are similar, but if they are similar because the same genes are being regulated in the same way!</strong></p>
 <p><strong>Using k = 13 for now…</strong></p>
-<pre class="r"><code>library(CSFA)
-cut.cluster.fingerprintMat &lt;- cutree(cluster.fingerprintMat,k=13)
+<pre class="r"><code># Loop framework to use later...
+library(CSFA)
 
-# fingerprintMat[cut.cluster.fingerprintMat==2,]
+cut.cluster.fingerprintMat &lt;- cutree(cluster.fingerprintMat,k=13) # get vector with cluster membership for compounds
+
+n.cluster &lt;- unique(cut.cluster.fingerprintMat) # number of clusters
+
+connectivity.fingerprint &lt;- vector('list',length(n.cluster)) # initialize list to store connectivity scores
+for (i in n.cluster) {
+  compounds.in.cluster &lt;- rownames(fingerprintMat[cut.cluster.fingerprintMat==i,,drop=F])
+  connectivity.fingerprint[[i]] &lt;- sapply( c('average',compounds.in.cluster), function(j) NULL)
+  connectivity.fingerprint[[i]][['compounds']] &lt;- compounds.in.cluster
+}
+
+for (i in connectivity.fingerprint) { # loop through clusters
+  for (j in i$compounds) { # loop through compounds in a cluster
+    # implement check if cluster size is 1...
+    refMat &lt;- geneMat[,i$compounds[i$compounds!=j]]
+    querMat &lt;- geneMat[,i$compounds[i$compounds==j],drop=F]
+    
+    # MFA.fingerprint &lt;- CSanalysis(refMat,querMat,&quot;CSmfa&quot;,which=c(),factor.plot=1) 
+    # extract relevant information and
+    # store this in list for each compound for each cluster
+  }
+}
+
+# lapply(connectivity.fingerprint, function(i) connectivity.fingerprint[[i]]&lt;- 1 )
+# connectivity.fingerprint
+# 
+# sapply(n.cluster, function(i) i )
+# 
+# rownames(fingerprintMat[cut.cluster.fingerprintMat==2,])
 # 
 # clusterCols &lt;- rainbow(length(unique(cut.cluster.fingerprintMat)))
 # 
 # myClusterSideBar &lt;- clusterCols[cut.cluster.fingerprintMat]
 # 
 # fingerprintMat[,cut.cluster.fingerprintMat]</code></pre>
+<p>Trying out MFA…</p>
+<pre class="r"><code>library(CSFA)
+refMat &lt;- geneMat[,connectivity.fingerprint[[2]]$compounds[connectivity.fingerprint[[2]]$compounds!=&quot;phenformin&quot;]]
+querMat &lt;- geneMat[,connectivity.fingerprint[[2]]$compounds[connectivity.fingerprint[[2]]$compounds==&quot;phenformin&quot;],drop=F]
+
+MFA.fingerprint &lt;- CSanalysis(refMat,querMat,&quot;CSmfa&quot;,which=c(),factor.plot=1) </code></pre>
+<pre><code>## Echoufier Rv Correlation:
+##           Reference     Query       MFA
+## Reference 1.0000000 0.1311387 0.8652661
+## Query     0.1311387 1.0000000 0.6104534
+## MFA       0.8652661 0.6104534 1.0000000</code></pre>
+<pre><code>## Error in if (x &lt; 0) {: missing value where TRUE/FALSE needed</code></pre>
+<pre class="r"><code>library(FactoMineR)
+
+# MFA2 &lt;- MFA()
+
+CSloadings_ref &lt;- MFA.fingerprint@CS$CS.ref</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'MFA.fingerprint' not found</code></pre>
+<pre class="r"><code>CSloadings_query &lt;- MFA.fingerprint@CS$CS.query</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'MFA.fingerprint' not found</code></pre>
 </div>
 <div id="promising-reading-materials" class="section level2">
 <h2>Promising reading materials</h2>
