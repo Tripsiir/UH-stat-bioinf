@@ -594,13 +594,13 @@ The loadings for queries for the first component, per cluster, are:
 sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),])
 ```
 
-The average per cluster is:
+The average per cluster, for the first component, is:
 
 ```{r between_finger_demo_loadings_average}
 sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(x) mean(abs(x)))
 ```
 
-And for the second:
+And for the second component:
 
 ```{r between_finger_demo_loadings_pc2_calc, results='hide'}
 betw.finger.factor2.demo <-  CSanalysis(refMat, querMat,"CSmfa",which=c(),factor.plot=2,plot.type='sweave')
@@ -643,7 +643,7 @@ plot_MFA_fingerprint_between = function(cluster,factor){
   return(mfa)
 }
 for (i in 1:length(n.cluster.fingerprint)){
-  print(paste('Query cluster is',i))
+  print(paste('Reference cluster is',i))
   plot_MFA_fingerprint_between(i,1)
 }
 ```
@@ -704,7 +704,7 @@ plot_MFA_target_between = function(cluster,factor){
   return(mfa)
 }
 for (i in 1:length(n.cluster.target)){
-  print(paste('Query cluster is',i))
+  print(paste('Reference cluster is',i))
   plot_MFA_target_between(i,1)
 }
 ```

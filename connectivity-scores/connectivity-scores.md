@@ -1,4 +1,4 @@
-# Connectivity scores
+# Integration of connectivity scores of gene expression data and clustering on other data sources
 Pieter Moris  
 `r format(Sys.Date())`  
 
@@ -355,6 +355,36 @@ We will repeat the MFA, each time leaving out another compound of the cluster in
 
 ```r
 library(CSFA)
+```
+
+```
+## +----------------------------+                                          
+## |............................|                                          
+## |............................|                                          
+## |..............########......|  #######    #    ######    ###      #    
+## |..............########......|  #         # #   #     #    #      # #   
+## |.....####.....########......|  #        #   #  #     #    #     #   #  
+## |.....####.....########......|  #####   #     # ######     #    #     # 
+## |.....####...................|  #       ####### #     #    #    ####### 
+## |.....####...........###.....|  #       #     # #     #    #    #     # 
+## |....................###.....|  #       #     # ######    ###   #     # 
+## |....................###.....|                                          
+## |............................|                                          
+## +----------------------------+
+```
+
+```
+## Citation: S. Hochreiter et al.,
+## FABIA: Factor Analysis for Bicluster Acquisition,
+## Bioinformatics 26(12):1520-1527, 2010.
+## BibTex: enter 'toBibtex(citation("fabia"))'
+## 
+## Homepage: http://www.bioinf.jku.at/software/fabia/fabia.html
+## 
+## FABIA Package Version 2.16.0
+```
+
+```r
 # MFA.fingerprint <- CSanalysis(refMat, querMat,"CSmfa",which = c(1:7))
 # 2 = principal components for reference compounds
 # 3 = factor scores for genes (1vs2) + compound loadings (1v2)
@@ -1505,7 +1535,7 @@ sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[c
 ## [1]  0.28380483  0.40901167 -0.02636584  0.25720203  0.38957687
 ```
 
-The average per cluster is:
+The average per cluster, for the first component, is:
 
 
 ```r
@@ -1516,7 +1546,7 @@ sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.
 ## [1]        NA 0.2626802 0.4675385 0.2784712 0.3660819 0.3700567 0.2731922
 ```
 
-And for the second:
+And for the second component:
 
 
 ```r
@@ -1597,13 +1627,13 @@ plot_MFA_fingerprint_between = function(cluster,factor){
   return(mfa)
 }
 for (i in 1:length(n.cluster.fingerprint)){
-  print(paste('Query cluster is',i))
+  print(paste('Reference cluster is',i))
   plot_MFA_fingerprint_between(i,1)
 }
 ```
 
 ```
-## [1] "Query cluster is 1"
+## [1] "Reference cluster is 1"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.2584674 0.7921036
@@ -1614,7 +1644,7 @@ for (i in 1:length(n.cluster.fingerprint)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-20-1.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-2.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-3.png)
 
 ```
-## [1] "Query cluster is 2"
+## [1] "Reference cluster is 2"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.3404831 0.8455741
@@ -1625,7 +1655,7 @@ for (i in 1:length(n.cluster.fingerprint)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-20-4.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-5.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-6.png)
 
 ```
-## [1] "Query cluster is 3"
+## [1] "Reference cluster is 3"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.3838865 0.7820214
@@ -1636,7 +1666,7 @@ for (i in 1:length(n.cluster.fingerprint)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-20-7.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-8.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-9.png)
 
 ```
-## [1] "Query cluster is 4"
+## [1] "Reference cluster is 4"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.4722375 0.8845967
@@ -1647,7 +1677,7 @@ for (i in 1:length(n.cluster.fingerprint)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-20-10.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-11.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-12.png)
 
 ```
-## [1] "Query cluster is 5"
+## [1] "Reference cluster is 5"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.3177078 0.7814809
@@ -1658,7 +1688,7 @@ for (i in 1:length(n.cluster.fingerprint)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-20-13.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-14.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-15.png)
 
 ```
-## [1] "Query cluster is 6"
+## [1] "Reference cluster is 6"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.2752337 0.7618247
@@ -1669,7 +1699,7 @@ for (i in 1:length(n.cluster.fingerprint)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-20-16.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-17.png)![](connectivity-scores_files/figure-html/unnamed-chunk-20-18.png)
 
 ```
-## [1] "Query cluster is 7"
+## [1] "Reference cluster is 7"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.2515774 0.7166931
@@ -1770,13 +1800,13 @@ plot_MFA_target_between = function(cluster,factor){
   return(mfa)
 }
 for (i in 1:length(n.cluster.target)){
-  print(paste('Query cluster is',i))
+  print(paste('Reference cluster is',i))
   plot_MFA_target_between(i,1)
 }
 ```
 
 ```
-## [1] "Query cluster is 1"
+## [1] "Reference cluster is 1"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.2867505 0.8108455
@@ -1787,7 +1817,7 @@ for (i in 1:length(n.cluster.target)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-24-1.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-2.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-3.png)
 
 ```
-## [1] "Query cluster is 2"
+## [1] "Reference cluster is 2"
 ## Echoufier Rv Correlation:
 ##           Reference    Query       MFA
 ## Reference 1.0000000 0.378437 0.8066873
@@ -1798,7 +1828,7 @@ for (i in 1:length(n.cluster.target)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-24-4.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-5.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-6.png)
 
 ```
-## [1] "Query cluster is 3"
+## [1] "Reference cluster is 3"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.2818730 0.7426472
@@ -1809,7 +1839,7 @@ for (i in 1:length(n.cluster.target)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-24-7.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-8.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-9.png)
 
 ```
-## [1] "Query cluster is 4"
+## [1] "Reference cluster is 4"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.3692011 0.8200426
@@ -1820,7 +1850,7 @@ for (i in 1:length(n.cluster.target)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-24-10.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-11.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-12.png)
 
 ```
-## [1] "Query cluster is 5"
+## [1] "Reference cluster is 5"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.2596873 0.7603781
@@ -1831,7 +1861,7 @@ for (i in 1:length(n.cluster.target)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-24-13.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-14.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-15.png)
 
 ```
-## [1] "Query cluster is 6"
+## [1] "Reference cluster is 6"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.3682933 0.8639050
@@ -1842,7 +1872,7 @@ for (i in 1:length(n.cluster.target)){
 ![](connectivity-scores_files/figure-html/unnamed-chunk-24-16.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-17.png)![](connectivity-scores_files/figure-html/unnamed-chunk-24-18.png)
 
 ```
-## [1] "Query cluster is 7"
+## [1] "Reference cluster is 7"
 ## Echoufier Rv Correlation:
 ##           Reference     Query       MFA
 ## Reference 1.0000000 0.3195437 0.8510042
