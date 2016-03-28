@@ -212,6 +212,10 @@ def getCIDFragmentIons(sequence,charge):
     First, all possible b and y ion fragments are generated.
     Then, the monoisotopic weights are calculated for the given charge.
 
+    This method makes use of the pyteomics package to compute the
+    monoisotopic masses. For more information, please refer to:
+    https://pythonhosted.org/pyteomics/mass.html
+
     Parameters
     ----------
     sequence : str
@@ -237,7 +241,7 @@ def getCIDFragmentIons(sequence,charge):
 
     return yFragmentMasses, bFragmentMasses
 
-def getAllFragmentsUpToChargeX(sequence,charge):
+def getAllFragmentsChargeX(sequence,charge):
     """
     Calculate b and y ion monoisotopic masses for a given sequence,
     up to the specified charged.
@@ -265,12 +269,16 @@ def getAllFragmentsUpToChargeX(sequence,charge):
     fragmentationDictionary = {}
 
 
-    for i in range(charge):     # for each charge state
-        currentCharge = i+1     # calculate list of y and b ions masses
+    # create dictionary key specifiying ion type (y/b) and charge state
+    # associate the corresponding list of fragment masses with the key
+    fragmentationDictionary[str('yIons+'+str(charge))] , fragmentationDictionary[str('bIons+'+str(charge))] = getCIDFragmentIons(sequence,charge)
 
-        # create dictionary key specifiying ion type (y/b) and charge state
-        # associate the corresponding list of fragment masses with the key
-        fragmentationDictionary[str('yIons+'+str(currentCharge))] , fragmentationDictionary[str('bIons+'+str(currentCharge))] = getCIDFragmentIons(sequence,currentCharge)
+    # for i in range(charge):     # for each charge state
+    #     currentCharge = i+1     # calculate list of y and b ions masses
+
+    #     # create dictionary key specifiying ion type (y/b) and charge state
+    #     # associate the corresponding list of fragment masses with the key
+    #     fragmentationDictionary[str('yIons+'+str(currentCharge))] , fragmentationDictionary[str('bIons+'+str(currentCharge))] = getCIDFragmentIons(sequence,currentCharge)
 
     return fragmentationDictionary
 
@@ -291,7 +299,7 @@ def expPeakToFragmentsMatcher(experimentalPeak,theoreticalPeakList,ms2tolerance=
     theoreticalPeakList : ndarray
         A numpy array containing monoisotopic masses of peptide fragments
         of a certain ion type and charge.
-        Obtained from a theoretical fragment dictionary, see getAllFragmentsUpToCharge().
+        Obtained from a theoretical fragment dictionary, see getAllFragmentsChargeX().
     ms2tolerance : float
         The error tolerance to use, in Dalton.
 
@@ -321,7 +329,7 @@ def expPeakToFragmentsDict(experimentalPeak,theoreticalFragmentMassDict,ms2toler
     theoreticalFragmentMassDict : ndarray
         A dictionary containing numpy arrays with monoisotopic masses of peptide fragments
         for differnt ion types and charges.
-        Obtained from a theoretical fragment dictionary, see getAllFragmentsUpToCharge().
+        Obtained from a theoretical fragment dictionary, see getAllFragmentsChargeX().
     ms2tolerance : float
         The error tolerance to use, in Dalton.
 
@@ -366,7 +374,7 @@ def scoreForTheoreticalPeptide(experimentalMZs,theoreticalPeptideSequence,charge
         better: the proportion?
     """
     # calculate theoretical fragment masses NOTE: better to supply dictionary directly? this would encapsulate the choice of charge...
-    theoreticalFragmentMassDict = getAllFragmentsUpToChargeX(theoreticalPeptideSequence,charge)
+    theoreticalFragmentMassDict = getAllFragmentsChargeX(theoreticalPeptideSequence,charge)
 
     # initialize counter
     matchCounter = 0

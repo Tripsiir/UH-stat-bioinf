@@ -2,6 +2,10 @@
 
 This python script matches experimental tandem MS spectra (in .dta format) against a peptide and decoy database (.fasta).
 
+For the full documentation, please refer to either the interactive Jupyter notebook or its HTML version in the \docs folder.
+
+## Quick overview
+
 First, the precursor mass is used a mass filter to select potential peptide candidates from the database. 
 Next, the experimental peaks are matched against in-silico derived b- and y-ion m/z values derived from the chosen peptides, i.e. theoretical to observed spectrum matching.
 Each peptide is given a score reflecting its similarity to the experimental spectrum.
