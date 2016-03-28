@@ -65,9 +65,15 @@ print(decoyCands)
 
 # Calculate pseudo p-values
 peptideCands.loc[:,'P-value'] = peptideCands.apply(lambda row: (row['Score'] <= decoyCands.Score).sum() / decoyCands.Score.size,axis=1)
-
-
 print(peptideCands)
+
+highest_score =peptideCands.loc[peptideCands['P-value'].idxmax()]
+
+print(highest_score)
+print(type(highest_score))
+
+print(proteinData.Sequence.str.contains(highest_score.Sequence))
+
 
 
 
