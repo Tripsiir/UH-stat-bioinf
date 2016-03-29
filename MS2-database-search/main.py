@@ -45,7 +45,7 @@ def getPSM(spectrumFile,folderPath,ms1Tolerance,ms2Tolerance):
     and calculating their m/z values (with the parent charge minus 1, or 1 for singly charged parents),
     and finally counting the number of matching peaks between the experimental and
     theoretical peptide spectrum (using the ms2 tolerance 0.1 Da).
-    The same procedure is repeated by searching against the decoy peptide database.
+    The same procedure is repeated by searching against the reversed decoy peptide database.
 
     Parameters
     ----------
@@ -149,4 +149,77 @@ def matchAllSpectra(pathToSpectra,ms1Tolerance=args.ms1Tolerance,ms2Tolerance=ar
 
     return spectrumScoreDatabase
 
-print(matchAllSpectra(spectraFilePath))
+PSM = matchAllSpectra(spectraFilePath)
+print(PSM)
+
+#print(PSM['Type'] == 'Decoy')
+#print(PSM.loc[PSM['Type'] == 'Decoy','Score'])
+#print(41<=PSM.loc[PSM['Type'] == 'Decoy','Score'])
+#print((41<=PSM.loc[PSM['Type'] == 'Decoy','Score']).sum())
+#print(PSM.loc[PSM['Type'] == 'Decoy','Score'].size)
+#PSM.loc[:,'P-value'] = PSM.apply(lambda row: (row['Score'] <= PSM.loc[PSM['Type'] == 'Decoy','Score']).sum() / PSM.loc[PSM['Type'] == 'Decoy','Score'].size ,axis=1)
+#print(PSM)
+
+def calculatePValues(spectrumScoreDatabase):
+    """
+    Given target and decoy PSM's for a number of spectra, the p-value is calculated by
+    computing the percentage of decoy PSM scores higher than the observed target PSM.
+    See Käll et al. (2007) PMID: 18067246
+
+    Parameters
+    ----------
+    spectrumScoreDatabase : DataFrame
+        A pandas DataFrame containing target and decoy PSM scores for all spectra.
+        Obtained by calling matchAllSpectra().
+
+    Returns
+    -------
+    spectrumScoreDatabaseWithPValues : DataFrame
+        A pandas DataFrame containing target and decoy PSM scores for all spectra,
+        and p-values.
+    """
+    numberOfDecoys = spectrumScoreDatabase.loc[spectrumScoreDatabase['Type'] == 'Decoy','Score'].size
+
+    # Compute p-value and add as column
+    spectrumScoreDatabase.loc[:,'P-value'] = spectrumScoreDatabase.apply(lambda row: (row['Score'] <= spectrumScoreDatabase.loc[spectrumScoreDatabase['Type'] == 'Decoy','Score']).sum() / numberOfDecoys ,axis=1)
+
+    return spectrumScoreDatabase
+
+print(calculatePValues(PSM))
+#PSM[PSM['Type'] == 'Target','Sequence'].Sequence)
+
+print(proteinData.loc[proteinData.Sequence.str.contains('SSGNSSSSGSGSGSTSAGSSSPGAR')])
+
+#print(PSM.apply(lambda row: (proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])]) )  )
+#print(PSM.apply(lambda row: row['Score']+1 )  )
+#print(PSM.apply(lambda row: proteinData[proteinData.Sequence.str.contains(row['Sequence'])] ,axis=1))
+
+print('Retrieving proteins')
+for index, row in PSM.iterrows():
+    print(row['Sequence'],row['Type'])
+    print(proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])])
+#print(PSM.iloc[0:5].Score)
+
+
+
+#
+#def calculatePValues(spectrumScoreDatabase):
+#    """
+#    Given target and decoy PSM's for a number of spectra,
+#
+#    the p-value is calculated by
+#    computing the percentage of decoy PSM scores higher than the observed target PSM.
+#    See Käll et al. (2007) PMID: 18067246
+#
+#    Parameters
+#    ----------
+#    spectrumScoreDatabase : DataFrame
+#        A pandas DataFrame containing target and decoy PSM scores and p-values for all spectra.
+#        Obtained by calling calculatePValues().
+#
+#    Returns
+#    -------
+#    spectrumScoreDatabaseWithCorrectedPValues : DataFrame
+#        A pandas DataFrame containing target and decoy PSM scores for all spectra,
+#        raw p-values and FDR correction.
+#    """

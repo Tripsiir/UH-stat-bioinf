@@ -433,114 +433,114 @@ def matchExpSpectrumToCandidatePeptides(experimentalMZs,candidatePeptides,charge
 
     return candidatePeptides.drop_duplicates()
 
-def getPSM(spectrumFile,folderPath,ms1tolerance,ms2tolerance):
-    """
-    For the provided spectrum, the peptide spectrum match (PSM) and associated
-    score will be computed by filtering peptide candidates from the peptide database,
-    using the ms1 tolerance (default = 50 ppm), generating b/y ions
-    and calculating their m/z values (with the parent charge minus 1, or 1 for singly charged parents),
-    and finally counting the number of matching peaks between the experimental and
-    theoretical peptide spectrum (using the ms2 tolerance 0.1 Da).
-    The same procedure is repeated by searching against the decoy peptide database.
+# def getPSM(spectrumFile,folderPath,ms1tolerance,ms2tolerance):
+#     """
+#     For the provided spectrum, the peptide spectrum match (PSM) and associated
+#     score will be computed by filtering peptide candidates from the peptide database,
+#     using the ms1 tolerance (default = 50 ppm), generating b/y ions
+#     and calculating their m/z values (with the parent charge minus 1, or 1 for singly charged parents),
+#     and finally counting the number of matching peaks between the experimental and
+#     theoretical peptide spectrum (using the ms2 tolerance 0.1 Da).
+#     The same procedure is repeated by searching against the decoy peptide database.
 
-    Parameters
-    ----------
-    spectrumFile : str
-        The file name of experimental spectrum .dta file.
-    folderPath : str
-        The folder containing the experimental spectra .dta files.
-        Provided by the calling function matchAllSpectra().
-    ms1tolerance : float
-        The ms1 mass filtering error tolerance to use, in ppm.
-    ms2tolerance : float
-        The ms2 error tolerance to use during peak matching, in Dalton.
+#     Parameters
+#     ----------
+#     spectrumFile : str
+#         The file name of experimental spectrum .dta file.
+#     folderPath : str
+#         The folder containing the experimental spectra .dta files.
+#         Provided by the calling function matchAllSpectra().
+#     ms1tolerance : float
+#         The ms1 mass filtering error tolerance to use, in ppm.
+#     ms2tolerance : float
+#         The ms2 error tolerance to use during peak matching, in Dalton.
 
-    Returns
-    -------
-    targetPSM : Series
-        A pandas series containing the target PSM score and sequence.
-    decoyPSM : Series
-        A pandas series containing the decoy PSM score and sequence.
-    """
+#     Returns
+#     -------
+#     targetPSM : Series
+#         A pandas series containing the target PSM score and sequence.
+#     decoyPSM : Series
+#         A pandas series containing the decoy PSM score and sequence.
+#     """
 
-    # Read in experimental spectrum
-    expSpec = importExperimentalSpectrum(os.path.normpath(os.path.join(folderPath,spectrumFile)))
+#     # Read in experimental spectrum
+#     expSpec = importExperimentalSpectrum(os.path.normpath(os.path.join(folderPath,spectrumFile)))
 
-    # Retrieve parent mass (M) and charge to use: parent charge minus 1 unless parent charge is 1 already
-    precursorMass = getPrecursorMass(expSpec)
-    precursorCharge = getPrecursorCharge(expSpec) if getPrecursorCharge(expSpec)==1 else getPrecursorCharge(expSpec)-1
+#     # Retrieve parent mass (M) and charge to use: parent charge minus 1 unless parent charge is 1 already
+#     precursorMass = getPrecursorMass(expSpec)
+#     precursorCharge = getPrecursorCharge(expSpec) if getPrecursorCharge(expSpec)==1 else getPrecursorCharge(expSpec)-1
 
-    # Retrieve experimental m/z values
-    expMZ = getExperimentalMZs(expSpec)
+#     # Retrieve experimental m/z values
+#     expMZ = getExperimentalMZs(expSpec)
 
-    # Find peptide candidates in database
-    peptideCands = peptideCandidates(precursorMass,peptideDatabase=peptideData,massAccuracy=ms1tolerance)
+#     # Find peptide candidates in database
+#     peptideCands = peptideCandidates(precursorMass,peptideDatabase=peptideData,massAccuracy=ms1tolerance)
 
-    # Calculate scores for peptide candidates - use precursor charge -1
-    peptideCands = matchExpSpectrumToCandidatePeptides(expMZ,peptideCands,charge=precursorCharge,ms2tolerance=ms2tolerance)
+#     # Calculate scores for peptide candidates - use precursor charge -1
+#     peptideCands = matchExpSpectrumToCandidatePeptides(expMZ,peptideCands,charge=precursorCharge,ms2tolerance=ms2tolerance)
 
-    # Retrieve highest score = target peptide spectrum match
-    targetPSM = peptideCands.loc[peptideCands['Score'].idxmax()].copy()
-    targetPSM['Type'] = 'Target'
-    targetPSM['Spectrum'] = spectrumFile
-    targetPSM = targetPSM.drop('Monoisotopic Mass')
+#     # Retrieve highest score = target peptide spectrum match
+#     targetPSM = peptideCands.loc[peptideCands['Score'].idxmax()].copy()
+#     targetPSM['Type'] = 'Target'
+#     targetPSM['Spectrum'] = spectrumFile
+#     targetPSM = targetPSM.drop('Monoisotopic Mass')
 
-    # Find peptide candidates in decoys
-    decoyCands = peptideCandidates(precursorMass,peptideDatabase=decoyPeptideData,massAccuracy=ms1tolerance)
+#     # Find peptide candidates in decoys
+#     decoyCands = peptideCandidates(precursorMass,peptideDatabase=decoyPeptideData,massAccuracy=ms1tolerance)
 
-    # Calculate scores for peptide candidates - use precursor charge -1
-    decoyCands = matchExpSpectrumToCandidatePeptides(expMZ,decoyCands,charge=precursorCharge,ms2tolerance=ms2tolerance)
+#     # Calculate scores for peptide candidates - use precursor charge -1
+#     decoyCands = matchExpSpectrumToCandidatePeptides(expMZ,decoyCands,charge=precursorCharge,ms2tolerance=ms2tolerance)
 
-    # Retrieve highest decoy score = decoy peptide spectrum match
-    decoyPSM =decoyCands.loc[decoyCands['Score'].idxmax()].copy()
-    decoyPSM['Type'] = 'Decoy'
-    decoyPSM['Spectrum'] = spectrumFile
-    decoyPSM = decoyPSM.drop('Monoisotopic Mass')
+#     # Retrieve highest decoy score = decoy peptide spectrum match
+#     decoyPSM =decoyCands.loc[decoyCands['Score'].idxmax()].copy()
+#     decoyPSM['Type'] = 'Decoy'
+#     decoyPSM['Spectrum'] = spectrumFile
+#     decoyPSM = decoyPSM.drop('Monoisotopic Mass')
 
-#    # print some output
-#    print('Peptide matching scores for experimental spectrum ',spectrumFile)
-#    print(peptideCands,'\n')
-#    print('Target PSM: ',targetPSM,'\n')
-#
-#    print('Decoy matching scores for experimental spectrum ',spectrumFile)
-#    print(decoyCands,'\n')
-#    print('Decoy PSM: ',decoyPSM,'\n')
+# #    # print some output
+# #    print('Peptide matching scores for experimental spectrum ',spectrumFile)
+# #    print(peptideCands,'\n')
+# #    print('Target PSM: ',targetPSM,'\n')
+# #
+# #    print('Decoy matching scores for experimental spectrum ',spectrumFile)
+# #    print(decoyCands,'\n')
+# #    print('Decoy PSM: ',decoyPSM,'\n')
 
-    return targetPSM,decoyPSM
+#     return targetPSM,decoyPSM
 
-def matchAllSpectra(pathToSpectra,ms1tolerance,ms2tolerance):
-    """
-    For all the provided spectra files, the target and decoy peptide spectrum match (PSM)
-    is returned.
+# def matchAllSpectra(pathToSpectra,ms1tolerance,ms2tolerance):
+#     """
+#     For all the provided spectra files, the target and decoy peptide spectrum match (PSM)
+#     is returned.
 
-    See the function getPSM() for more details.
+#     See the function getPSM() for more details.
 
-    Parameters
-    ----------
-    pathToSpectra : The absolute path to the spectra .dta files.
-    ms1tolerance : float
-        The ms1 mass filtering error tolerance to use, in ppm.
-    ms2tolerance : float
-        The ms2 error tolerance to use during peak matching, in Dalton.
+#     Parameters
+#     ----------
+#     pathToSpectra : The absolute path to the spectra .dta files.
+#     ms1tolerance : float
+#         The ms1 mass filtering error tolerance to use, in ppm.
+#     ms2tolerance : float
+#         The ms2 error tolerance to use during peak matching, in Dalton.
 
-    Returns
-    -------
-    spectrumScoreDatabase : DataFrame
-        A pandas DataFrame containing target and decoy PSM scores for all spectra.
-    """
+#     Returns
+#     -------
+#     spectrumScoreDatabase : DataFrame
+#         A pandas DataFrame containing target and decoy PSM scores for all spectra.
+#     """
 
-    # Initialise dataframe to store results
-    spectrumScoreDatabase = pd.DataFrame()
+#     # Initialise dataframe to store results
+#     spectrumScoreDatabase = pd.DataFrame()
 
-    for f in os.listdir(pathToSpectra):
-        print('Processing',f)
-        if f.endswith(".dta"):
-            target,decoy = getPSM(f,folderPath=pathToSpectra,ms1tolerance=ms1tolerance,ms2tolerance=ms2tolerance)
-            spectrumScoreDatabase = spectrumScoreDatabase.append([target,decoy])
-        else:
-            continue
+#     for f in os.listdir(pathToSpectra):
+#         print('Processing',f)
+#         if f.endswith(".dta"):
+#             target,decoy = getPSM(f,folderPath=pathToSpectra,ms1tolerance=ms1tolerance,ms2tolerance=ms2tolerance)
+#             spectrumScoreDatabase = spectrumScoreDatabase.append([target,decoy])
+#         else:
+#             continue
 
-    # sort scores
-    spectrumScoreDatabase = spectrumScoreDatabase.sort_values('Score',ascending=False)
+#     # sort scores
+#     spectrumScoreDatabase = spectrumScoreDatabase.sort_values('Score',ascending=False)
 
-    return spectrumScoreDatabase
+#     return spectrumScoreDatabase
