@@ -433,7 +433,10 @@ decoyScores = matchExpSpectrumToCandidatePeptides(expMZ,decoyCands,2)
 print('decoys',decoyScores)
 peptideCands.loc[:,'P-value'] = peptideCands.apply(lambda row: (row['Score'] <= decoyScores.Score).sum() / decoyScores.Score.size,axis=1)
 print(peptideCands)
-#
+
+
+print(expMZ.size)
+
 #import pylab
 #pylab.figure()
 #pylab.title('Theoretical and experimental spectra')

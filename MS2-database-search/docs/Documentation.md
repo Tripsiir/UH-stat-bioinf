@@ -7,10 +7,10 @@ In addition to this document, the main functions can all be found in the \ms2mat
 
 # Using the software
 
-The package can be run via the command line by calling 'python main.py' followed by the absolute path to an experimental spectrum .dta file and optionally the MS1 ( '-t1 --toleranceMS1' ) and MS2 mass tolerance ( '-t2 --toleranceMS2' ). The default values are 50 ppm and 0.1 Dalton respectively.
+The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files and optionally the MS1 ( '-t1 --toleranceMS1' ) and MS2 mass tolerance ( '-t2 --toleranceMS2' ). The default values are 50 ppm and 0.1 Dalton respectively.
 
 <pre>
-python main.py path/to/file.dta -t1 50 -t2 01
+python main.py path/to/spectraFolder -t1 50 -t2 01
 </pre>
 
 Running 'python main.py --help' also provides an overview of the accepted arguments.
@@ -38,13 +38,13 @@ proteinDatabasePath = os.path.normpath(os.path.join(parentdir, data_path,databas
 peptideDatabasePath = os.path.normpath(os.path.join(parentdir, data_path,database_path,'studentP_peptides.fasta'))
 decoyDatabasePath = os.path.normpath(os.path.join(parentdir, data_path,database_path,'studentD.fasta'))
 decoyPeptideDatabasePath = os.path.normpath(os.path.join(parentdir, data_path,database_path,'studentD_peptides.fasta'))
+spectraFilePath = os.path.normpath(os.path.join(parentdir,data_path,spectra_path))
 ```
 
-The .fasta databases are imported into a pandas DataFrame. One column contains the sequences of the peptides/proteins, while the other contains either the UniProtKB/Swiss-Prot identifiers (for the proteins) or the **monoisotopic masses** (for the peptides).
+The .fasta databases are imported into a pandas dataframes. One column contains the sequences of the peptides/proteins, while the other contains either the UniProtKB/Swiss-Prot identifiers (for the proteins) or the **monoisotopic masses (M)** (for the peptides).
 
 
 ```python
-# read in protein, peptide and decoy databases
 proteinData = ms.importProteins(proteinDatabasePath)
 peptideData = ms.importPeptides(peptideDatabasePath)
 decoyPeptideData = ms.importPeptides(decoyPeptideDatabasePath)
@@ -53,7 +53,7 @@ decoyData = ms.importProteins(decoyDatabasePath)
 
 
 ```python
-print(peptideData[:10])
+print(peptideData[:5])
 ```
 
        Monoisotopic Mass         Sequence
@@ -62,11 +62,6 @@ print(peptideData[:10])
     2          511.23254             CPHR
     3          858.46985          EELLDIK
     4          709.37589           ELPHSK
-    5         1046.51790        QRPSCLSEK
-    6         1309.54630      YDSDGVWDPEK
-    7         1243.60980      WHASLYPASGR
-    8          845.44945         SSPVESLK
-    9         1299.67830      ELDTDRPSLVR
     
 
 ## Importing experimental spectra (.dta)
@@ -77,7 +72,7 @@ The .dta file is a tab-deliminated file where the first line contains the precur
 
 
 ```python
-expSpec = ms.importExperimentalSpectrum(os.path.normpath(os.path.join(parentdir, data_path,spectra_path,'hela1ugul.2404.2404.2.dta')))
+expSpec = ms.importExperimentalSpectrum(os.path.normpath(os.path.join(spectraFilePath,'hela1ugul.2404.2404.2.dta')))
 print(expSpec[:10])
 ```
 
@@ -95,7 +90,7 @@ print(expSpec[:10])
 
 For easy retrieval later on the information regarding the precursor ion and the fragmentation peaks are separated.
 
-Note that the **precursor mass** in the .dta file is the charged parent ion (i.e. (M+H)+1 ) monoisotopic mass. We subtract the mass of one proton (1.0072764) to obtain the **uncharged monoisotopic parent mass** from this.
+Note that the **precursor mass** in the .dta file is the charged parent ion (i.e. (M+H)+1 ) monoisotopic mass. We subtract the mass of one proton (1.0072764) to obtain the **uncharged monoisotopic parent mass (M)** from this, because this is the same format the peptide database has.
 
 
 ```python
@@ -124,7 +119,7 @@ print(precursorMass*50/1000000)
     0.10509333968
     
 
-This results in the following peptide candidates in the database.
+This results in the following peptide candidates in the database: these are all the sequences that fall inside an 0.10 window of the parent monoisotopic mass (M).
 
 
 ```python
@@ -144,7 +139,7 @@ print(peptideCands)
 
 ## Peptide candidates - fragmenting into b and y ions
 
-For each of the candidate peptides in the filtered pandas DataFrame, the b and y ions are generated and the **monoisotopic masses** are calculated for the specified charge (default value is precursor charge minus 1, or 1 for those with charge 1). The resulting masses are stored in separate numpy arrays for the b and y ions and both are combined into a dictionary.
+For each of the candidate peptides in the filtered pandas DataFrame, the b and y ions are generated and the **monoisotopic m/z values** are calculated for the specified charge (default value is precursor charge minus 1, or 1 for those with charge 1). The resulting masses are stored in separate numpy arrays for the b and y ions, and in the end both are combined into a dictionary.
 
 
 ```python
@@ -187,7 +182,7 @@ print(mass.calculate_mass(sequence='R',ion_type='b',charge=1))
 
 If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still count as a score of 1, although we do not expect this to occurr often, since there are no amino acids that differ by exactly 18 Da. 
 
-This procedure is then performed for **every candidate peptide** and the scores are appended to the pandas DataFrame.
+This procedure is then performed for **every candidate peptide** and the scores are appended to the pandas DataFrame. Note that duplicates are removed in case the peptide database is not unique.
 
 
 ```python
@@ -198,21 +193,30 @@ print(peptideCands)
           Monoisotopic Mass                   Sequence  Score
     1645          2101.9246         AVDWWGLGVVMYEMMCGR      9
     1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41
-    1730          2101.9246         AVDWWGLGVVMYEMMCGR      9
-    1773          2101.9246         AVDWWGLGVVMYEMMCGR      9
     1812          2101.8456        GDDEEGECSIDYVEMAVNK      5
     2192          2101.9341        DFNGSDASTQLNTHYAFSK      6
-    3325          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41
     
 
-** explain: isotopic peaks missed + divide score by total spectrum mz?**
+### Motivation for using the count as a score
 
-Note that we are matching experimental to theoretical fragments here. Our motivation for this is the following:
+Note that we are matching experimental to theoretical fragments here. We did not divide the score by the number of peaks in either the experimental (since this would simply be a constant) or the theoretical spectrum. Our motivation for this is the following:
 
 - Our main point of interest is the observed experimental spectrum. We aim to explain this data as good as possible. Any peak that can be found in the theoretical database is a peak that can be explained. 
 - The reverse, checking how many of the theoretical peaks are actually observed, is of less importances in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed. But this does not mean that the experimental spectrum did not originate from the peptide in question.
-- Any noise or contamination in the experimental spectrum might result in erroneous matches, but we are working under the assumption that the signal of the peptide that was selected during MS1 will be stronger than any of the noise.
+- By dividing by the number of expected theoretical peaks, we are penalizing observed spectra where for example the shortest or longest ions were not observed, but this should not be indicative of a worse match.
+- The opposite does not hold either: a theoretical spectrum with only a few peaks might obtain a high score, if almost all of these can be matched to the theoretical spectrum. However, all the other true peaks in the theoretical spectrum cannot be explained by the theoretical one, yet we are not penalizing the score if we divide by the number of theoretical peaks. This peptide would obtain the same score as a peptide which matches additional theoretical peaks, or a lower score than a peptide which matches additional ones, but also lacks a few.
+- Any noise or contamination in the experimental spectrum might result in erroneous matches, but we are working under the assumption that the signal of the peptide that was selected during MS1 will be stronger than the noise.
 
+### A note about isotopic peaks
+
+Our score does not take into account isotopic peaks in the theoretical spectrum, but we believe this is likely not a big issue:
+
+- First of all, all theoretical spectra consist of only the monoisotopic m/z values.
+- Consequently, all peptide candidates will fail to match to the higher mass isotopic peaks in the theoretical fragment (unless a different y/b ion has the same m/z as a higher order isotopic peak of a different ion). The scores of the peptides will systematically be lower by the same amount, i.e. their ranking will be consistent.
+
+An alternative strategy would be to first de-isotope the experimental spectrum, but this would require accuracte calling of true peaks and can be difficult if there is noise or overlap between the b/y ion series.
+
+### Visualisation of peak matching
 Visually, the following is happening: all black peaks (experimental peaks) that overlap (given a certain error tolerance) with the red peaks (theoretical fragment masses) are counted.
 
 
@@ -238,7 +242,7 @@ pylab.bar(theor_spectrum,[expSpec[:,1].max()]*len(theor_spectrum),width=0.1, edg
 
 
 
-![png](Documentation_files/Documentation_31_1.png)
+![png](Documentation_files/Documentation_32_1.png)
 
 
 ## Decoy peak matching
@@ -252,6 +256,317 @@ decoyCands = ms.matchExpSpectrumToCandidatePeptides(expMZ,decoyCands,charge=prec
 print(decoyCands)
 ```
 
+          Monoisotopic Mass             Sequence  Score
+    1660          2101.9246   GCMMEYMVVGLGWWDVAR      7
+    2146          2101.9341  SFAYHTNLQTSADSGNFDK      5
+    
+
+## Peptide Spectrum Match
+
+For each spectrum, the top scoring peptide is selected as the peptide spectrum match (or PSM). Doing this for both the target and decoy database results in a target and decoy PSM as follows:
+
+
+```python
+targetPSM = peptideCands.loc[peptideCands['Score'].idxmax()].copy()
+targetPSM['Type'] = 'Target'
+targetPSM['Spectrum'] = 'hela1ugul.2404.2404.2.dta'
+targetPSM = targetPSM.drop('Monoisotopic Mass')
+
+decoyPSM =decoyCands.loc[decoyCands['Score'].idxmax()].copy()
+decoyPSM['Type'] = 'Decoy'
+decoyPSM['Spectrum'] = 'hela1ugul.2404.2404.2.dta'
+decoyPSM = decoyPSM.drop('Monoisotopic Mass')
+
+print(targetPSM)
+print(decoyPSM)
+```
+
+    Sequence    SSGNSSSSGSGSGSTSAGSSSPGAR
+    Score                              41
+    P-value                             0
+    Type                           Target
+    Spectrum    hela1ugul.2404.2404.2.dta
+    Name: 1657, dtype: object
+    Sequence           GCMMEYMVVGLGWWDVAR
+    Score                               7
+    Type                            Decoy
+    Spectrum    hela1ugul.2404.2404.2.dta
+    Name: 1660, dtype: object
+    
+
+## Retrieving peptide spectrum matches for all the spectra
+
+The following functions perform all of the procedures we described above, for all the specified spectra. When running this tool in the command line, all the .dta files in the specified folder will be considered.
+
+All the intermediate steps (i.e. peptide scoring within a spectrum) are printed here for illustration purposes. The final dataframe at the bottom contains the top target and decoy PSM's for each spectrum.
+
+
+```python
+import pandas as pd
+def getPSM(spectrumFile,folderPath,ms1Tolerance,ms2Tolerance):
+    """
+    For the provided spectrum, the peptide spectrum match (PSM) and associated
+    score will be computed by filtering peptide candidates from the peptide database,
+    using the ms1 tolerance (default = 50 ppm), generating b/y ions
+    and calculating their m/z values (with the parent charge minus 1, or 1 for singly charged parents),
+    and finally counting the number of matching peaks between the experimental and
+    theoretical peptide spectrum (using the ms2 tolerance 0.1 Da).
+    The same procedure is repeated by searching against the decoy peptide database.
+
+    Parameters
+    ----------
+    spectrumFile : str
+        The file name of experimental spectrum .dta file.
+    folderPath : str
+        The folder containing the experimental spectra .dta files.
+        Provided by the calling function matchAllSpectra().
+    ms1tolerance : float
+        The ms1 mass filtering error tolerance to use, in ppm.
+    ms2tolerance : float
+        The ms2 error tolerance to use during peak matching, in Dalton.
+
+    Returns
+    -------
+    targetPSM : Series
+        A pandas series containing the target PSM score and sequence.
+    decoyPSM : Series
+        A pandas series containing the decoy PSM score and sequence.
+    """
+
+    # Read in experimental spectrum
+    expSpec = ms.importExperimentalSpectrum(os.path.normpath(os.path.join(folderPath,spectrumFile)))
+
+    # Retrieve parent mass (M) and charge to use: parent charge minus 1 unless parent charge is 1 already
+    precursorMass = ms.getPrecursorMass(expSpec)
+    precursorCharge = ms.getPrecursorCharge(expSpec) if ms.getPrecursorCharge(expSpec)==1 else ms.getPrecursorCharge(expSpec)-1
+
+    # Retrieve experimental m/z values
+    expMZ = ms.getExperimentalMZs(expSpec)
+
+    # Find peptide candidates in database
+    peptideCands = ms.peptideCandidates(precursorMass,peptideDatabase=peptideData,massAccuracy=ms1Tolerance)
+
+    # Calculate scores for peptide candidates - use precursor charge -1
+    peptideCands = ms.matchExpSpectrumToCandidatePeptides(expMZ,peptideCands,charge=precursorCharge,ms2tolerance=ms2Tolerance)
+
+    # Retrieve highest score = target peptide spectrum match
+    targetPSM = peptideCands.loc[peptideCands['Score'].idxmax()].copy()
+    targetPSM['Type'] = 'Target'
+    targetPSM['Spectrum'] = spectrumFile
+    targetPSM = targetPSM.drop('Monoisotopic Mass')
+
+    # Find peptide candidates in decoys
+    decoyCands = ms.peptideCandidates(precursorMass,peptideDatabase=decoyPeptideData,massAccuracy=ms1Tolerance)
+
+    # Calculate scores for peptide candidates - use precursor charge -1
+    decoyCands = ms.matchExpSpectrumToCandidatePeptides(expMZ,decoyCands,charge=precursorCharge,ms2tolerance=ms2Tolerance)
+
+    # Retrieve highest decoy score = decoy peptide spectrum match
+    decoyPSM =decoyCands.loc[decoyCands['Score'].idxmax()].copy()
+    decoyPSM['Type'] = 'Decoy'
+    decoyPSM['Spectrum'] = spectrumFile
+    decoyPSM = decoyPSM.drop('Monoisotopic Mass')
+    
+    print('Peptide matching scores for experimental spectrum ',spectrumFile)
+    print(peptideCands,'\n')
+    print('Target PSM: ',targetPSM,'\n')
+    print('Decoy matching scores for experimental spectrum ',spectrumFile)
+    print(decoyCands,'\n')
+    print('Decoy PSM: ',decoyPSM,'\n')
+
+    return targetPSM,decoyPSM
+
+def matchAllSpectra(pathToSpectra,ms1Tolerance,ms2Tolerance):
+    """
+    For all the provided spectra files, the target and decoy peptide spectrum match (PSM)
+    is returned.
+
+    See the function getPSM() for more details.
+
+    Parameters
+    ----------
+    pathToSpectra : The absolute path to the spectra .dta files.
+    ms1tolerance : float
+        The ms1 mass filtering error tolerance to use, in ppm.
+    ms2tolerance : float
+        The ms2 error tolerance to use during peak matching, in Dalton.
+
+    Returns
+    -------
+    spectrumScoreDatabase : DataFrame
+        A pandas DataFrame containing target and decoy PSM scores for all spectra.
+    """
+
+    # Initialise dataframe to store results
+    spectrumScoreDatabase = pd.DataFrame()
+
+    for f in os.listdir(pathToSpectra):
+        print('Processing',f)
+        if f.endswith(".dta"):
+            target,decoy = getPSM(f,folderPath=pathToSpectra,ms1Tolerance=ms1Tolerance,ms2Tolerance=ms2Tolerance)
+            spectrumScoreDatabase = spectrumScoreDatabase.append([target,decoy])
+        else:
+            continue
+
+    # sort scores
+    spectrumScoreDatabase = spectrumScoreDatabase.sort_values('Score',ascending=False)
+
+    return spectrumScoreDatabase
+
+print(matchAllSpectra(spectraFilePath,ms1Tolerance=50,ms2Tolerance=0.1))
+```
+
+    Processing hela1ugul.12566.12566.2.dta
+    Peptide matching scores for experimental spectrum  hela1ugul.12566.12566.2.dta
+          Monoisotopic Mass             Sequence  Score
+    632           1899.8904    GPNPAFWWVNGQGDEVK      9
+    1659          1899.8010   LGIYDADGDGDFDVDDAK     26
+    2035          1899.8495    ANPMYNAVSNADLMDFK      4
+    2657          1899.8363      NNFEFCEAHIPFYNR      7
+    3030          1899.8017  TSSSSCSAHSSFSSTGQPR      6
+    3379          1899.7855     CFSLDAFCHHFSNMNK      7 
+    
+    Target PSM:  Sequence             LGIYDADGDGDFDVDDAK
+    Score                                26
+    Type                             Target
+    Spectrum    hela1ugul.12566.12566.2.dta
+    Name: 1659, dtype: object 
+    
+    Decoy matching scores for experimental spectrum  hela1ugul.12566.12566.2.dta
+          Monoisotopic Mass            Sequence  Score
+    1730          1899.8010  ADDVDFDGDGDADYIGLK     19
+    3429          1899.7855    NMNSFHHCFADLSFCK      6 
+    
+    Decoy PSM:  Sequence             ADDVDFDGDGDADYIGLK
+    Score                                19
+    Type                              Decoy
+    Spectrum    hela1ugul.12566.12566.2.dta
+    Name: 1730, dtype: object 
+    
+    Processing hela1ugul.16509.16509.3.dta
+    Peptide matching scores for experimental spectrum  hela1ugul.16509.16509.3.dta
+          Monoisotopic Mass                 Sequence  Score
+    102           2228.2093   LAPDPSLVIYAIFPSGGVVADK     15
+    389           2228.1338      AFNSHTWEQLGTLQLLSQR      9
+    812           2228.2430     LLLENVLPAHVAPQFIGQNR     14
+    1204          2228.0597  TEVEAGASGYSVTGGGDQGIFVK     17
+    1669          2228.1576    GAIETYQEVASLPDVPADLLK     21
+    2232          2228.1736    TALHLACANGHPEVVTLLVDR     15
+    2833          2228.0862    FWAANVPPSEALQPSSSPSTR     14
+    3162          2228.1107    HENNLSVLAISNMEASSTLAK      8 
+    
+    Target PSM:  Sequence          GAIETYQEVASLPDVPADLLK
+    Score                                21
+    Type                             Target
+    Spectrum    hela1ugul.16509.16509.3.dta
+    Name: 1669, dtype: object 
+    
+    Decoy matching scores for experimental spectrum  hela1ugul.16509.16509.3.dta
+          Monoisotopic Mass                 Sequence  Score
+    796           2228.2430     NQGIFQPAVHAPLVNELLLR     11
+    1639          2228.0597  VFIGQDGGGTVSYGSAGAEVETK      9
+    2395          2228.1736    DVLLTVVEPHGNACALHLATR     10
+    2879          2228.0862    TSPSSSPQLAESPPVNAAWFR     14 
+    
+    Decoy PSM:  Sequence          TSPSSSPQLAESPPVNAAWFR
+    Score                                14
+    Type                              Decoy
+    Spectrum    hela1ugul.16509.16509.3.dta
+    Name: 2879, dtype: object 
+    
+    Processing hela1ugul.2404.2404.2.dta
+    Peptide matching scores for experimental spectrum  hela1ugul.2404.2404.2.dta
+          Monoisotopic Mass                   Sequence  Score
+    1645          2101.9246         AVDWWGLGVVMYEMMCGR      9
+    1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41
+    1812          2101.8456        GDDEEGECSIDYVEMAVNK      5
+    2192          2101.9341        DFNGSDASTQLNTHYAFSK      6 
+    
+    Target PSM:  Sequence    SSGNSSSSGSGSGSTSAGSSSPGAR
+    Score                              41
+    Type                           Target
+    Spectrum    hela1ugul.2404.2404.2.dta
+    Name: 1657, dtype: object 
+    
+    Decoy matching scores for experimental spectrum  hela1ugul.2404.2404.2.dta
+          Monoisotopic Mass             Sequence  Score
+    1660          2101.9246   GCMMEYMVVGLGWWDVAR      7
+    2146          2101.9341  SFAYHTNLQTSADSGNFDK      5 
+    
+    Decoy PSM:  Sequence           GCMMEYMVVGLGWWDVAR
+    Score                               7
+    Type                            Decoy
+    Spectrum    hela1ugul.2404.2404.2.dta
+    Name: 1660, dtype: object 
+    
+    Processing hela1ugul.2406.2406.3.dta
+    Peptide matching scores for experimental spectrum  hela1ugul.2406.2406.3.dta
+          Monoisotopic Mass                   Sequence  Score
+    1645          2101.9246         AVDWWGLGVVMYEMMCGR      4
+    1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR      9
+    1812          2101.8456        GDDEEGECSIDYVEMAVNK      6
+    2192          2101.9341        DFNGSDASTQLNTHYAFSK      7 
+    
+    Target PSM:  Sequence    SSGNSSSSGSGSGSTSAGSSSPGAR
+    Score                               9
+    Type                           Target
+    Spectrum    hela1ugul.2406.2406.3.dta
+    Name: 1657, dtype: object 
+    
+    Decoy matching scores for experimental spectrum  hela1ugul.2406.2406.3.dta
+          Monoisotopic Mass             Sequence  Score
+    1660          2101.9246   GCMMEYMVVGLGWWDVAR      5
+    2146          2101.9341  SFAYHTNLQTSADSGNFDK      6 
+    
+    Decoy PSM:  Sequence          SFAYHTNLQTSADSGNFDK
+    Score                               6
+    Type                            Decoy
+    Spectrum    hela1ugul.2406.2406.3.dta
+    Name: 2146, dtype: object 
+    
+    Processing hela1ugul.3746.3746.2.dta
+    Peptide matching scores for experimental spectrum  hela1ugul.3746.3746.2.dta
+          Monoisotopic Mass     Sequence  Score
+    178           1177.5404    AQSYEYVYR      4
+    699           1177.5015    DGYFWFMGR     10
+    886           1177.4636   GHEDDSYEAR      6
+    1981          1177.5074   QEDSPFQCPK     14
+    2062          1177.5372    LMQVWCDQR      7
+    2490          1177.5364  ASSPQGFDVDR     10
+    3067          1177.4427  NGGCNHMQCSK      8
+    3486          1177.5285  AEQEALTGECK      6 
+    
+    Target PSM:  Sequence                   QEDSPFQCPK
+    Score                              14
+    Type                           Target
+    Spectrum    hela1ugul.3746.3746.2.dta
+    Name: 1981, dtype: object 
+    
+    Decoy matching scores for experimental spectrum  hela1ugul.3746.3746.2.dta
+          Monoisotopic Mass     Sequence  Score
+    1532          1177.5285   DALSMDEELR     11
+    2094          1177.5372    QDCWVQMLR     12
+    3095          1177.4427  SCQMHNCGGNK      5 
+    
+    Decoy PSM:  Sequence                    QDCWVQMLR
+    Score                              12
+    Type                            Decoy
+    Spectrum    hela1ugul.3746.3746.2.dta
+    Name: 2094, dtype: object 
+    
+                           Sequence  Score    Type                     Spectrum
+    1657  SSGNSSSSGSGSGSTSAGSSSPGAR     41  Target    hela1ugul.2404.2404.2.dta
+    1659         LGIYDADGDGDFDVDDAK     26  Target  hela1ugul.12566.12566.2.dta
+    1669      GAIETYQEVASLPDVPADLLK     21  Target  hela1ugul.16509.16509.3.dta
+    1730         ADDVDFDGDGDADYIGLK     19   Decoy  hela1ugul.12566.12566.2.dta
+    2879      TSPSSSPQLAESPPVNAAWFR     14   Decoy  hela1ugul.16509.16509.3.dta
+    1981                 QEDSPFQCPK     14  Target    hela1ugul.3746.3746.2.dta
+    2094                  QDCWVQMLR     12   Decoy    hela1ugul.3746.3746.2.dta
+    1657  SSGNSSSSGSGSGSTSAGSSSPGAR      9  Target    hela1ugul.2406.2406.3.dta
+    1660         GCMMEYMVVGLGWWDVAR      7   Decoy    hela1ugul.2404.2404.2.dta
+    2146        SFAYHTNLQTSADSGNFDK      6   Decoy    hela1ugul.2406.2406.3.dta
+    
+
 # Confidence assignment
 
 
@@ -262,6 +577,13 @@ peptideCands.loc[:,'P-value'] = peptideCands.apply(lambda row: (row['Score'] <= 
 print(peptideCands)
 
 ```
+
+          Monoisotopic Mass                   Sequence  Score  P-value
+    1645          2101.9246         AVDWWGLGVVMYEMMCGR      9      0.0
+    1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41      0.0
+    1812          2101.8456        GDDEEGECSIDYVEMAVNK      5      1.0
+    2192          2101.9341        DFNGSDASTQLNTHYAFSK      6      0.5
+    
 
 
 ```python
