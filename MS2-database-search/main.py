@@ -249,9 +249,6 @@ def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
     The FDR is defined as the ratio of decoy and target PSM's larger than a score threshold.
     See Käll et al. (2008) PMID: 18067246
 
-    Note: this function takes as input the original dataframe obtained from
-    the function matchAllSpectra() or calculatePValues(), not calculateQValues()!
-
     Parameters
     ----------
     spectrumScoreDatabase : DataFrame
@@ -292,6 +289,23 @@ print(PSM)
 input("\n\nPress Enter to continue...")
 
 def retrieveProteins(spectrumScoreDatabase):
+    """
+    Given target PSM's accepted by the FDR cut-off, search through the protein database
+    and return a list of UniProtKB/Swiss-Prot identifiers for which the sequences contain
+    an exact sub-string match to the target peptide sequences.
+
+    Parameters
+    ----------
+    spectrumScoreDatabase : DataFrame
+        A pandas DataFrame containing target and decoy PSM scores for all spectra.
+        Obtained by calling matchAllSpectra().
+
+    Returns
+    -------
+    accepted : DataFrame
+        The filtered pandas DataFrame containing only those target PSM's
+        with a score higher than the specified FDR threshold.
+    """
     spectrumScoreDatabase.loc[:,'Inferred Proteins'] = spectrumScoreDatabase.apply(lambda row: proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])].Identifier.tolist() ,axis=1)
     return spectrumScoreDatabase
 
