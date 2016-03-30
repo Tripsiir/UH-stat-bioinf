@@ -8,6 +8,7 @@ import ms2matcher.ms2matcher as ms
 import os
 import argparse
 import pandas as pd
+import numpy as np
 
 # Check provided arguments
 parser = argparse.ArgumentParser(description='MS2 experimental to database matcher')
@@ -151,20 +152,9 @@ def matchAllSpectra(pathToSpectra,ms1Tolerance=args.ms1Tolerance,ms2Tolerance=ar
 
     return spectrumScoreDatabase
 
-PSM = matchAllSpectra(spectraFilePath)
-print(PSM)
-
-#print(PSM['Type'] == 'Decoy')
-#print(PSM.loc[PSM['Type'] == 'Decoy','Score'])
-#print(41<=PSM.loc[PSM['Type'] == 'Decoy','Score'])
-#print((41<=PSM.loc[PSM['Type'] == 'Decoy','Score']).sum())
-#print(PSM.loc[PSM['Type'] == 'Decoy','Score'].size)
-#PSM.loc[:,'P-value'] = PSM.apply(lambda row: (row['Score'] <= PSM.loc[PSM['Type'] == 'Decoy','Score']).sum() / PSM.loc[PSM['Type'] == 'Decoy','Score'].size ,axis=1)
-#print(PSM)
-
 def calculatePValues(spectrumScoreDatabase):
     """
-    Given target and decoy PSM's for a number of spectra, the p-value is calculated by
+    Given target and decoy PSM's for a number of spectra, the p-values are calculated by
     computing the percentage of decoy PSM scores higher than the observed target PSM.
     See Käll et al. (2008) PMID: 18067246
 
@@ -187,35 +177,80 @@ def calculatePValues(spectrumScoreDatabase):
 
     return spectrumScoreDatabase
 
-print(calculatePValues(PSM))
+def calculateQValues(spectrumScoreDatabase):
+    """
+    Given target and decoy PSM's for a number of spectra, the q-values are calculated,
+    defined as the minimum FDR threshold at which the PSM score would still be accepted.
+    See Käll et al. (2008) PMID: 18067246
+
+    Parameters
+    ----------
+    spectrumScoreDatabase : DataFrame
+        A pandas DataFrame containing target and decoy PSM scores for all spectra.
+        Obtained by calling matchAllSpectra() or calculatePValues().
+
+    Returns
+    -------
+    spectrumScoreDatabaseWithPValues : DataFrame
+        A pandas DataFrame containing target and decoy PSM scores for all spectra,
+        and q-values.
+    """
+    # reverse PSM list to allow checking if current q-value is larger than previous ones
+    reverseSpectrumScoreDatabase = spectrumScoreDatabase.iloc[::-1].copy()
+
+    # initialize q-value column
+    reverseSpectrumScoreDatabase['Q-value'] = np.nan
+
+    # retrieve decoy and target scores
+    decoys = reverseSpectrumScoreDatabase.loc[reverseSpectrumScoreDatabase['Type'] == 'Decoy']
+    targets = reverseSpectrumScoreDatabase.loc[reverseSpectrumScoreDatabase['Type'] == 'Target']
+
+    # set variable to remember previous FDR during loop
+    previousFDR = 1
+
+    # Set the q-value for each PSM to the smallest FDR cut-off at which it would still be accepted
+    # Prevents q-values for higher scores to be lower than for lower scores by looking back at previous values
+    for index, row in reverseSpectrumScoreDatabase.iterrows():
+        if row['Type'] == 'Decoy':
+            continue
+        FDR = (decoys.Score >= row['Score']).sum()/ (targets.Score >= row['Score']).sum()
+        FDR = FDR if previousFDR >= FDR else previousFDR
+        reverseSpectrumScoreDatabase.loc[index,'Q-value'] = FDR
+        previousFDR = FDR
+
+#    # Drop decoys from dataframe
+#    reverseSpectrumScoreDatabase = reverseSpectrumScoreDatabase[reverseSpectrumScoreDatabase.Type == 'Target']
+
+    # return again sorted from high to low
+    return reverseSpectrumScoreDatabase.iloc[::-1]
+
+PSM = matchAllSpectra(spectraFilePath)
+
+print('\nHighest scoring peptide spectrum matches for each experimental spectrum (separate decoy and target database search): \n')
+PSM = calculatePValues(PSM)
+print(PSM)
+input("Press Enter to continue...")
 
 
-print('FDR testing')
-#FDR = input('Please specify the desired FDR (blank defaults to 0.05): ')
-##
-##nDecoys = PSM.loc[PSM['Type'] == 'Decoy','Score'].size
-#decoys = PSM.loc[PSM['Type']=='Decoy']
-#targets = PSM.loc[PSM['Type'] == 'Target']
-#print(decoys[decoys.Score >= 0.027607])
-#print((decoys.Score >= 0.038997).sum()/ (targets.Score >= 0.038997).sum() )
-#
-#FDR = 100
-#
-#scores = PSM.Score.sort_values()
-#desiredFDR = 0.05
-#for potentialCutOff in scores:
-#    FDR = (decoys.Score >= potentialCutOff).sum()/ (targets.Score >= potentialCutOff).sum()
-#    if FDR <= desiredFDR:
-#        cutOff = potentialCutOff
-#        break
+print('\nComputed q-values for the target peptide spectrum matches: \n')
+PSM = calculateQValues(PSM)
+print(PSM)
+print('\nNote: q-values are defined as the minimal FDR threshold for which a given PSM is accepted, i.e. the expected proportion of false positives among PSMs with a lower q-value. \n')
+input("Press Enter to continue...")
 
-def setFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
+
+def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
     """
     Given target and decoy PSM's and scores for a number of spectra, the FDR cut-off
     score is calculated for a specified FDR value. If no FDR is provided, the user
-    is requested to specify one.
+    is requested to specify one. The FDR is then applied to filter the target PSM's
+    to be retained.
 
+    The FDR is defined as the ratio of decoy and target PSM's larger than a score threshold.
     See Käll et al. (2008) PMID: 18067246
+
+    Note: this function takes as input the original dataframe obtained from
+    the function matchAllSpectra() or calculatePValues(), not calculateQValues()!
 
     Parameters
     ----------
@@ -233,37 +268,33 @@ def setFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
     decoys = spectrumScoreDatabase.loc[spectrumScoreDatabase['Type']=='Decoy']
     targets = spectrumScoreDatabase.loc[spectrumScoreDatabase['Type'] == 'Target']
     scores = spectrumScoreDatabase.Score.sort_values()
+
 #    if not desiredFDR:
-#        desiredFDR = float(input('Please specify the desired FDR (blank defaults to 0.05): ') or 0.05)
+#    desiredFDR = float(input('Please specify the desired FDR (blank defaults to 0.05): ') or args.desiredFDR)
     FDR = 100
     for potentialCutOff in scores:
         FDR = (decoys.Score >= potentialCutOff).sum()/ (targets.Score >= potentialCutOff).sum()
         if FDR <= desiredFDR:
             cutOff = potentialCutOff
             break
-    return FDR, cutOff
+    print('\nSpecified FDR level =',args.desiredFDR)
+    print('\nUsing the cut-off value {} to achieve an FDR of {}%.\n'.format(cutOff,FDR))
 
-print(setFDR(PSM))
+    # Drop decoys from dataframe
+    accepted = targets.loc[targets['Score'] >= cutOff].copy()
 
-#print(PSM.loc[PSM['Type'] == 'Decoy','Score'])
-#PSM.loc[:,'FDR'] = PSM.apply(lambda row: (row['Score'] <= PSM.loc[PSM['Type'] == 'Decoy','Score']).sum() /  PSM.loc[PSM['Type'] == 'Decoy','Score'].size ,axis=1)
-#print(PSM)
+    accepted = accepted[accepted.Type == 'Target']
 
+    return accepted
 
+print('\nRetrieving PSMs above chosen FDR threshold... \n')
+PSM = findFDR(PSM)
+print(PSM)
+input("Press Enter to continue...")
 
-#PSM[PSM['Type'] == 'Target','Sequence'].Sequence)
+def retrieveProteins(spectrumScoreDatabase):
+    spectrumScoreDatabase.loc[:,'Inferred Proteins'] = spectrumScoreDatabase.apply(lambda row: proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])].Identifier.tolist() ,axis=1)
+    return spectrumScoreDatabase
 
-
-
-#print(proteinData.loc[proteinData.Sequence.str.contains('SSGNSSSSGSGSGSTSAGSSSPGAR')])
-
-#print(PSM.apply(lambda row: (proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])]) )  )
-#print(PSM.apply(lambda row: row['Score']+1 )  )
-#print(PSM.apply(lambda row: proteinData[proteinData.Sequence.str.contains(row['Sequence'])] ,axis=1))
-
-#print('Retrieving proteins')
-#for index, row in PSM.iterrows():
-#    print(row['Sequence'],row['Type'])
-#    print(proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])])
-#print(PSM.iloc[0:5].Score)
-
+print('\n Finding protein identifiers associated with the matched peptides...\n')
+print(retrieveProteins(PSM))
