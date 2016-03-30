@@ -229,14 +229,14 @@ PSM = matchAllSpectra(spectraFilePath)
 print('\nHighest scoring peptide spectrum matches for each experimental spectrum (separate decoy and target database search): \n')
 PSM = calculatePValues(PSM)
 print(PSM)
-input("Press Enter to continue...")
+input("\n\nPress Enter to continue...")
 
 
 print('\nComputed q-values for the target peptide spectrum matches: \n')
 PSM = calculateQValues(PSM)
 print(PSM)
-print('\nNote: q-values are defined as the minimal FDR threshold for which a given PSM is accepted, i.e. the expected proportion of false positives among PSMs with a lower q-value. \n')
-input("Press Enter to continue...")
+print('\nNote: q-values are defined as the minimal FDR threshold for which a given PSM is accepted, i.e. the expected proportion of false positives among PSMs with a lower q-value.')
+input("\n\nPress Enter to continue...")
 
 
 def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
@@ -260,10 +260,9 @@ def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
 
     Returns
     -------
-    FDR : float
-        The FDR that was used.
-    cutOff : float
-        The cut-off score to achieve this FDR
+    accepted : DataFrame
+        The filtered pandas DataFrame containing only those target PSM's
+        with a score higher than the specified FDR threshold.
     """
     decoys = spectrumScoreDatabase.loc[spectrumScoreDatabase['Type']=='Decoy']
     targets = spectrumScoreDatabase.loc[spectrumScoreDatabase['Type'] == 'Target']
@@ -277,7 +276,7 @@ def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
         if FDR <= desiredFDR:
             cutOff = potentialCutOff
             break
-    print('\nSpecified FDR level =',args.desiredFDR)
+    print('Specified FDR level =',args.desiredFDR)
     print('\nUsing the cut-off value {} to achieve an FDR of {}%.\n'.format(cutOff,FDR))
 
     # Drop decoys from dataframe
@@ -287,10 +286,10 @@ def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
 
     return accepted
 
-print('\nRetrieving PSMs above chosen FDR threshold... \n')
+print('\nRetrieving PSMs above chosen FDR threshold...')
 PSM = findFDR(PSM)
 print(PSM)
-input("Press Enter to continue...")
+input("\n\nPress Enter to continue...")
 
 def retrieveProteins(spectrumScoreDatabase):
     spectrumScoreDatabase.loc[:,'Inferred Proteins'] = spectrumScoreDatabase.apply(lambda row: proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])].Identifier.tolist() ,axis=1)

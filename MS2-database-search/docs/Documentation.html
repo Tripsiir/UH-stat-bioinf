@@ -176,7 +176,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="MS2-experimental-spectrum-to-database-search">MS2 experimental spectrum to database search<a class="anchor-link" href="#MS2-experimental-spectrum-to-database-search">&#182;</a></h1>
+<h1 id="Tandem-MS-database-search-using-a-decoy-based-strategy">Tandem MS database search using a decoy-based strategy<a class="anchor-link" href="#Tandem-MS-database-search-using-a-decoy-based-strategy">&#182;</a></h1>
 </div>
 </div>
 </div>
@@ -185,8 +185,9 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>This documentation describes the various methods implemented in the ms2matcher package. First we will provide a short demonstration on how to use the package and later we will show how the underlying functions work and the intermediate output that they provide.</p>
-<p>In addition to this document, the main functions can all be found in the \ms2matcher folder in the main module file ms2matcher.py. All methods are documented according to the  NumPy/SciPy style convention (<a href="https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt">https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt</a>), providing a clear overview of the required inputs and delivered outputs for each method, as well as the design philosephy and inter-dependencies between the methods.</p>
+<p>This documentation describes the various methods implemented in the ms2matcher package. First, we will provide a short demonstration on how to use the package and later we will show how the underlying functions work and the intermediate output that they provide.</p>
+<p>In addition to this document, the main functions can all be found in the \ms2matcher folder in the main module file ms2matcher.py. All methods are documented according to the  NumPy/SciPy style convention (<a href="https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt">https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt</a>), providing a clear overview of the required inputs and delivered outputs for each method, as well as the design philosophy and inter-dependencies between the methods.</p>
+<h1 id="Brief-Overview">Brief Overview<a class="anchor-link" href="#Brief-Overview">&#182;</a></h1><p>This tool implements a simple version of tandem mass spectrometry (MS2 or MS/MS) using a target-decoy database search strategy for the identification of experimentally derived mass spectra of fragmented peptides. For an introduction to tandem MS, please refer to Sadygov, Cociorva &amp; Yates (2004), for a primer on decoy databases, see Käll et al. (2008), and for other topics please refer to the reference list at the end of this document.</p>
 
 </div>
 </div>
@@ -205,10 +206,11 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files and optionally the MS1 ( '-t1 --toleranceMS1' ) and MS2 mass tolerance ( '-t2 --toleranceMS2' ). The default values are 50 ppm and 0.1 Dalton respectively.</p>
+<p>The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files and optionally the MS1 ( '-t1' '--toleranceMS1' ), MS2 mass tolerance ( '-t2' '--toleranceMS2' ) and desired FDR ( '-fdr' '--FDR' ). The default values are 50 ppm, 0.1 Dalton and 5% respectively.</p>
 <pre>
-python main.py path/to/spectraFolder -t1 50 -t2 01
+python main.py path/to/spectraFolder -t1 50 -t2 0.1 -fdr 0.05
 </pre><p>Running 'python main.py --help' also provides an overview of the accepted arguments.</p>
+<p>To save the output, simply use a '&gt;' command in the command line to specify the desired .txt file to store the results in.</p>
 
 </div>
 </div>
@@ -218,7 +220,25 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Step-by-step-walkthrough">Step-by-step walkthrough<a class="anchor-link" href="#Step-by-step-walkthrough">&#182;</a></h1>
+<h2 id="Dependencies">Dependencies<a class="anchor-link" href="#Dependencies">&#182;</a></h2><p>This tool relies on the following packages:</p>
+<ul>
+<li>numpy (<a href="http://www.numpy.org/">http://www.numpy.org/</a>)</li>
+<li>pandas (<a href="http://pandas.pydata.org/">http://pandas.pydata.org/</a>)</li>
+<li>biopython (<a href="http://biopython.org/wiki/Main_Page">http://biopython.org/wiki/Main_Page</a>)</li>
+<li>pyteomics (<a href="https://pythonhosted.org/pyteomics/">https://pythonhosted.org/pyteomics/</a>)</li>
+</ul>
+<p>Please refer to the packages' manuals, pip (<a href="https://docs.python.org/3.6/installing/index.html">https://docs.python.org/3.6/installing/index.html</a>) or a package management system such as Conda (<a href="http://conda.pydata.org/docs/">http://conda.pydata.org/docs/</a>) for more information on how to install additional python packages.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="Step-by-step-walkthrough">Step-by-step walkthrough<a class="anchor-link" href="#Step-by-step-walkthrough">&#182;</a></h1><p>The following section describes the underlying pipeline that is run whenever the tool is run via the command line. The theoretical basis of the methods is also described and references to relevant literature are made.</p>
+
 </div>
 </div>
 </div>
@@ -236,14 +256,14 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>First the package will read in the protein and peptide digests databases which are located in the /data folder of the package. The following lines of code show how the relative paths are defined.</p>
+<p>First the package will read in the protein, peptide digests and reverse decoy databases which are located in the /data/database/ folder of the package. The following lines of code simply show how the relative paths are defined.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[22]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
@@ -253,6 +273,8 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 <span class="n">moduledir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parentdir</span><span class="p">,</span> <span class="s1">&#39;ms2matcher&#39;</span><span class="p">))</span>
 <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">moduledir</span><span class="p">)</span>
 <span class="kn">import</span> <span class="nn">ms2matcher</span> <span class="k">as</span> <span class="nn">ms</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="n">data_path</span> <span class="o">=</span> <span class="s1">&#39;data&#39;</span>
 <span class="n">database_path</span> <span class="o">=</span> <span class="s1">&#39;database&#39;</span>
@@ -300,7 +322,8 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 <div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">peptideData</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">IPython.display</span> <span class="k">import</span> <span class="n">display</span>
+<span class="n">display</span><span class="p">(</span><span class="n">peptideData</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span>
 </pre></div>
 
 </div>
@@ -312,15 +335,48 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>   Monoisotopic Mass         Sequence
-0         1598.71340  SMGETESGDAFLDLK
-1          626.37516           KPPASK
-2          511.23254             CPHR
-3          858.46985          EELLDIK
-4          709.37589           ELPHSK
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Monoisotopic Mass</th>
+      <th>Sequence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1598.71340</td>
+      <td>SMGETESGDAFLDLK</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>626.37516</td>
+      <td>KPPASK</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>511.23254</td>
+      <td>CPHR</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>858.46985</td>
+      <td>EELLDIK</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>709.37589</td>
+      <td>ELPHSK</td>
+    </tr>
+  </tbody>
+</table>
 </div>
+</div>
+
 </div>
 
 </div>
@@ -349,7 +405,7 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">expSpec</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">importExperimentalSpectrum</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spectraFilePath</span><span class="p">,</span><span class="s1">&#39;hela1ugul.2404.2404.2.dta&#39;</span><span class="p">)))</span>
@@ -403,8 +459,8 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">precursorMass</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">getPrecursorMass</span><span class="p">(</span><span class="n">expSpec</span><span class="p">)</span>
 <span class="n">precursorCharge</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">getPrecursorCharge</span><span class="p">(</span><span class="n">expSpec</span><span class="p">)</span> <span class="k">if</span> <span class="n">ms</span><span class="o">.</span><span class="n">getPrecursorCharge</span><span class="p">(</span><span class="n">expSpec</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span> <span class="k">else</span> <span class="n">ms</span><span class="o">.</span><span class="n">getPrecursorCharge</span><span class="p">(</span><span class="n">expSpec</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span>
 <span class="n">expMZ</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">getExperimentalMZs</span><span class="p">(</span><span class="n">expSpec</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">precursorMass</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">precursorCharge</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Precursor mass (M):&#39;</span><span class="p">,</span><span class="n">precursorMass</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Precursor charge:&#39;</span><span class="p">,</span><span class="n">precursorCharge</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -417,8 +473,8 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>2101.8667935999997
-1
+<pre>Precursor mass (M): 2101.8667935999997
+Precursor charge: 1
 </pre>
 </div>
 </div>
@@ -441,7 +497,8 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The peptide database is filtered for potential <strong>peptide candidates</strong> based on the monoisotopic mass of the experimental parent peptide. The default <strong>mass tolerance</strong> is 50 ppm, but this can be specified in the command line using the argument -t1.</p>
+<p>The peptide database is filtered for potential <strong>peptide candidates</strong> based on the monoisotopic mass of the experimental parent peptide. This step is done to reduce the search space to a more manageable size.</p>
+<p>The default <strong>mass tolerance</strong> is 50 ppm, but this can be specified in the command line using the argument -t1.</p>
 <p>For example, for the given spectrum, the theoretical peptides can deviate, in either direction, with a value of: $$\frac{\text{Precursor Mass}\times 50}{10^6} = \frac{2101.8667936\times50}{10^6} = 0.10509333968$$</p>
 
 </div>
@@ -490,7 +547,7 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">peptideCands</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">peptideCandidates</span><span class="p">(</span><span class="n">precursorMass</span><span class="p">,</span><span class="n">peptideDatabase</span><span class="o">=</span><span class="n">peptideData</span><span class="p">,</span><span class="n">massAccuracy</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">peptideCands</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">peptideCands</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -502,17 +559,58 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>      Monoisotopic Mass                   Sequence
-1645          2101.9246         AVDWWGLGVVMYEMMCGR
-1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR
-1730          2101.9246         AVDWWGLGVVMYEMMCGR
-1773          2101.9246         AVDWWGLGVVMYEMMCGR
-1812          2101.8456        GDDEEGECSIDYVEMAVNK
-2192          2101.9341        DFNGSDASTQLNTHYAFSK
-3325          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Monoisotopic Mass</th>
+      <th>Sequence</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1645</th>
+      <td>2101.9246</td>
+      <td>AVDWWGLGVVMYEMMCGR</td>
+    </tr>
+    <tr>
+      <th>1657</th>
+      <td>2101.8744</td>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+    </tr>
+    <tr>
+      <th>1730</th>
+      <td>2101.9246</td>
+      <td>AVDWWGLGVVMYEMMCGR</td>
+    </tr>
+    <tr>
+      <th>1773</th>
+      <td>2101.9246</td>
+      <td>AVDWWGLGVVMYEMMCGR</td>
+    </tr>
+    <tr>
+      <th>1812</th>
+      <td>2101.8456</td>
+      <td>GDDEEGECSIDYVEMAVNK</td>
+    </tr>
+    <tr>
+      <th>2192</th>
+      <td>2101.9341</td>
+      <td>DFNGSDASTQLNTHYAFSK</td>
+    </tr>
+    <tr>
+      <th>3325</th>
+      <td>2101.8744</td>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+    </tr>
+  </tbody>
+</table>
 </div>
+</div>
+
 </div>
 
 </div>
@@ -533,7 +631,7 @@ python main.py path/to/spectraFolder -t1 50 -t2 01
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>For each of the candidate peptides in the filtered pandas DataFrame, the b and y ions are generated and the <strong>monoisotopic m/z values</strong> are calculated for the specified charge (default value is precursor charge minus 1, or 1 for those with charge 1). The resulting masses are stored in separate numpy arrays for the b and y ions, and in the end both are combined into a dictionary.</p>
+<p>For each of the candidate peptides in the filtered pandas DataFrame, the b and y ions are generated and the <strong>monoisotopic m/z values</strong> are calculated for the specified charge (default value is precursor charge minus 1, or 1 for those with charge 1). The resulting masses are stored in separate numpy arrays for the <strong>b and y ions</strong>, and in the end both are combined into a dictionary.</p>
 
 </div>
 </div>
@@ -584,7 +682,7 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The <strong>monoisotopic masses</strong> are calculated using the pyteomics package. For more information, please check it documentation: <a href="https://pythonhosted.org/pyteomics/mass.html">https://pythonhosted.org/pyteomics/mass.html</a></p>
+<p>The <strong>monoisotopic m/z values</strong> are calculated using the pyteomics package. For more information, please check its documentation: <a href="https://pythonhosted.org/pyteomics/mass.html">https://pythonhosted.org/pyteomics/mass.html</a></p>
 
 </div>
 </div>
@@ -633,9 +731,10 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>For each experimental m/z value</strong>, the <strong>theoretical fragment masses</strong> are queried to find a corresponding mass. The matching tolerance defaults to 0.1 Dalton, but can be specified in the command line using the parameter -t2.</p>
-<p>If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still count as a score of 1, although we do not expect this to occurr often, since there are no amino acids that differ by exactly 18 Da.</p>
-<p>This procedure is then performed for <strong>every candidate peptide</strong> and the scores are appended to the pandas DataFrame. Note that duplicates are removed in case the peptide database is not unique.</p>
+<p><strong>For each experimental m/z value</strong>, the <strong>theoretical fragment arrays</strong> are queried to find a corresponding mass. The matching tolerance defaults to 0.1 Dalton, but can be specified in the command line using the parameter -t2.</p>
+<p>If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still only count as an increment of 1, although we do not expect this to occurr often, since the ion residu masses would have to differ by exactly 18 Da.</p>
+<p>After counting all the peaks, this sum is then divided by the total number of experimental peaks. In other words, the <strong>percentage of matched experimental peaks</strong> is used as the score.</p>
+<p>This procedure is then performed for <strong>every candidate peptide</strong> and the scores are stored in the pandas DataFrame. Note that duplicates are removed in case the peptide database is not unique.</p>
 
 </div>
 </div>
@@ -646,7 +745,7 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">peptideCands</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">matchExpSpectrumToCandidatePeptides</span><span class="p">(</span><span class="n">expMZ</span><span class="p">,</span><span class="n">peptideCands</span><span class="p">,</span><span class="n">charge</span><span class="o">=</span><span class="n">precursorCharge</span><span class="p">,</span><span class="n">ms2tolerance</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">peptideCands</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">peptideCands</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -658,14 +757,48 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>      Monoisotopic Mass                   Sequence  Score
-1645          2101.9246         AVDWWGLGVVMYEMMCGR      9
-1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41
-1812          2101.8456        GDDEEGECSIDYVEMAVNK      5
-2192          2101.9341        DFNGSDASTQLNTHYAFSK      6
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Monoisotopic Mass</th>
+      <th>Sequence</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1645</th>
+      <td>2101.9246</td>
+      <td>AVDWWGLGVVMYEMMCGR</td>
+      <td>0.024658</td>
+    </tr>
+    <tr>
+      <th>1657</th>
+      <td>2101.8744</td>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+    </tr>
+    <tr>
+      <th>1812</th>
+      <td>2101.8456</td>
+      <td>GDDEEGECSIDYVEMAVNK</td>
+      <td>0.013699</td>
+    </tr>
+    <tr>
+      <th>2192</th>
+      <td>2101.9341</td>
+      <td>DFNGSDASTQLNTHYAFSK</td>
+      <td>0.016438</td>
+    </tr>
+  </tbody>
+</table>
 </div>
+</div>
+
 </div>
 
 </div>
@@ -677,14 +810,16 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Motivation-for-using-the-count-as-a-score">Motivation for using the count as a score<a class="anchor-link" href="#Motivation-for-using-the-count-as-a-score">&#182;</a></h3><p>Note that we are matching experimental to theoretical fragments here. We did not divide the score by the number of peaks in either the experimental (since this would simply be a constant) or the theoretical spectrum. Our motivation for this is the following:</p>
+<h3 id="Motivation-for-using-the-percentage-count-as-a-score">Motivation for using the percentage count as a score<a class="anchor-link" href="#Motivation-for-using-the-percentage-count-as-a-score">&#182;</a></h3><p>Note that we are matching experimental to theoretical fragments here. We divided the number of matches by the total number of experimental peaks, as opposed to those in the theoretical spectrum. Our motivation for this is the following:</p>
 <ul>
-<li>Our main point of interest is the observed experimental spectrum. We aim to explain this data as good as possible. Any peak that can be found in the theoretical database is a peak that can be explained. </li>
-<li>The reverse, checking how many of the theoretical peaks are actually observed, is of less importances in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed. But this does not mean that the experimental spectrum did not originate from the peptide in question.</li>
+<li>Our main point of interest is the observed experimental spectrum. We aim to explain this data as well as possible. Any peak that can be found in the theoretical database is a peak that can be explained. </li>
+<li>The reverse, checking how many of the theoretical peaks are actually observed, is of less importances in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed, e.g. incomplete fragmentation leads to missing ions. But this does not mean that the experimental spectrum did not originate from the peptide in question.</li>
 <li>By dividing by the number of expected theoretical peaks, we are penalizing observed spectra where for example the shortest or longest ions were not observed, but this should not be indicative of a worse match.</li>
 <li>The opposite does not hold either: a theoretical spectrum with only a few peaks might obtain a high score, if almost all of these can be matched to the theoretical spectrum. However, all the other true peaks in the theoretical spectrum cannot be explained by the theoretical one, yet we are not penalizing the score if we divide by the number of theoretical peaks. This peptide would obtain the same score as a peptide which matches additional theoretical peaks, or a lower score than a peptide which matches additional ones, but also lacks a few.</li>
-<li>Any noise or contamination in the experimental spectrum might result in erroneous matches, but we are working under the assumption that the signal of the peptide that was selected during MS1 will be stronger than the noise.</li>
+<li>Any electrical noise or chemical noise (contamination) in the experimental spectrum might result in erroneous matches, but we are working under the assumption that the signal of the peptide that was selected during MS1 will be stronger than the noise.</li>
+<li>Finally, if we would not use the percentage as a score, but rather the raw counts, the score would become less suitable for comparison across spectra, since short peptides would always result in lower scores. </li>
 </ul>
+<h3 id="Shortcomings-of-scoring-function">Shortcomings of scoring function<a class="anchor-link" href="#Shortcomings-of-scoring-function">&#182;</a></h3><p>We do note that there are a few shortcomings to this method, which are addressed in other scoring functions. For example, our approach does not take into account the intensities of the experimental spectrum, but this is a complex field and highly dependent on the technology that was used (Sadygov, Cociorva &amp; Yates, 2004). Furthermore, ion series other than the y and b series are ignored and we do not check the completeness of these series. Finally, we also do not look for neutral losses or other modifications of the ions.</p>
 
 </div>
 </div>
@@ -939,19 +1074,19 @@ gg==
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The <strong>decoy peptides</strong> are filtered and the <em>in silico</em> y/b ions are derived in exactly the same manner as above.</p>
+<p>The <strong>reversed decoy peptides</strong> are filtered and the <em>in silico</em> y/b ions are derived in exactly the same manner as above.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">decoyCands</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">peptideCandidates</span><span class="p">(</span><span class="n">precursorMass</span><span class="p">,</span><span class="n">peptideDatabase</span><span class="o">=</span><span class="n">decoyPeptideData</span><span class="p">,</span><span class="n">massAccuracy</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 <span class="n">decoyCands</span> <span class="o">=</span> <span class="n">ms</span><span class="o">.</span><span class="n">matchExpSpectrumToCandidatePeptides</span><span class="p">(</span><span class="n">expMZ</span><span class="p">,</span><span class="n">decoyCands</span><span class="p">,</span><span class="n">charge</span><span class="o">=</span><span class="n">precursorCharge</span><span class="p">,</span><span class="n">ms2tolerance</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">decoyCands</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">decoyCands</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -963,12 +1098,36 @@ gg==
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>      Monoisotopic Mass             Sequence  Score
-1660          2101.9246   GCMMEYMVVGLGWWDVAR      7
-2146          2101.9341  SFAYHTNLQTSADSGNFDK      5
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Monoisotopic Mass</th>
+      <th>Sequence</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1660</th>
+      <td>2101.9246</td>
+      <td>GCMMEYMVVGLGWWDVAR</td>
+      <td>0.019178</td>
+    </tr>
+    <tr>
+      <th>2146</th>
+      <td>2101.9341</td>
+      <td>SFAYHTNLQTSADSGNFDK</td>
+      <td>0.013699</td>
+    </tr>
+  </tbody>
+</table>
 </div>
+</div>
+
 </div>
 
 </div>
@@ -989,14 +1148,14 @@ gg==
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>For each spectrum, the top scoring peptide is selected as the peptide spectrum match (or PSM). Doing this for both the target and decoy database results in a target and decoy PSM as follows:</p>
+<p>For each spectrum, the top scoring peptide is selected as the <strong>peptide spectrum match</strong> (or PSM). Doing this for both the target and decoy database results in a target and decoy PSM as follows:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[33]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">targetPSM</span> <span class="o">=</span> <span class="n">peptideCands</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">peptideCands</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -1009,7 +1168,7 @@ gg==
 <span class="n">decoyPSM</span><span class="p">[</span><span class="s1">&#39;Spectrum&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;hela1ugul.2404.2404.2.dta&#39;</span>
 <span class="n">decoyPSM</span> <span class="o">=</span> <span class="n">decoyPSM</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;Monoisotopic Mass&#39;</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="n">targetPSM</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">targetPSM</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">decoyPSM</span><span class="p">)</span>
 </pre></div>
 
@@ -1024,13 +1183,13 @@ gg==
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>Sequence    SSGNSSSSGSGSGSTSAGSSSPGAR
-Score                              41
-P-value                             0
+Score                        0.112329
 Type                           Target
 Spectrum    hela1ugul.2404.2404.2.dta
-Name: 1657, dtype: object
+Name: 1657, dtype: object 
+
 Sequence           GCMMEYMVVGLGWWDVAR
-Score                               7
+Score                       0.0191781
 Type                            Decoy
 Spectrum    hela1ugul.2404.2404.2.dta
 Name: 1660, dtype: object
@@ -1056,15 +1215,15 @@ Name: 1660, dtype: object
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The following functions perform all of the procedures we described above, for all the specified spectra. When running this tool in the command line, all the .dta files in the specified folder will be considered.</p>
-<p>All the intermediate steps (i.e. peptide scoring within a spectrum) are printed here for illustration purposes. The final dataframe at the bottom contains the top target and decoy PSM's for each spectrum.</p>
+<p>The following functions perform all of the procedures we described above, for all the experimental spectra. When running this tool in the command line, all the .dta files in the specified folder will be considered.</p>
+<p>The final dataframe at the bottom contains the <strong>top target and decoy PSM's for each spectrum</strong>.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[38]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
@@ -1132,12 +1291,12 @@ Name: 1660, dtype: object
     <span class="n">decoyPSM</span><span class="p">[</span><span class="s1">&#39;Spectrum&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spectrumFile</span>
     <span class="n">decoyPSM</span> <span class="o">=</span> <span class="n">decoyPSM</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;Monoisotopic Mass&#39;</span><span class="p">)</span>
     
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Peptide matching scores for experimental spectrum &#39;</span><span class="p">,</span><span class="n">spectrumFile</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">peptideCands</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Target PSM: &#39;</span><span class="p">,</span><span class="n">targetPSM</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Decoy matching scores for experimental spectrum &#39;</span><span class="p">,</span><span class="n">spectrumFile</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">decoyCands</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Decoy PSM: &#39;</span><span class="p">,</span><span class="n">decoyPSM</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="c1">#    print(&#39;Peptide matching scores for experimental spectrum &#39;,spectrumFile)</span>
+<span class="c1">#    print(peptideCands,&#39;\n&#39;)</span>
+<span class="c1">#    print(&#39;Target PSM: &#39;,targetPSM,&#39;\n&#39;)</span>
+<span class="c1">#    print(&#39;Decoy matching scores for experimental spectrum &#39;,spectrumFile)</span>
+<span class="c1">#    print(decoyCands,&#39;\n&#39;)</span>
+<span class="c1">#    print(&#39;Decoy PSM: &#39;,decoyPSM,&#39;\n&#39;)</span>
 
     <span class="k">return</span> <span class="n">targetPSM</span><span class="p">,</span><span class="n">decoyPSM</span>
 
@@ -1166,7 +1325,7 @@ Name: 1660, dtype: object
     <span class="n">spectrumScoreDatabase</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
 
     <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">pathToSpectra</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Processing&#39;</span><span class="p">,</span><span class="n">f</span><span class="p">)</span>
+        <span class="c1">#print(&#39;Processing&#39;,f)</span>
         <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.dta&quot;</span><span class="p">):</span>
             <span class="n">target</span><span class="p">,</span><span class="n">decoy</span> <span class="o">=</span> <span class="n">getPSM</span><span class="p">(</span><span class="n">f</span><span class="p">,</span><span class="n">folderPath</span><span class="o">=</span><span class="n">pathToSpectra</span><span class="p">,</span><span class="n">ms1Tolerance</span><span class="o">=</span><span class="n">ms1Tolerance</span><span class="p">,</span><span class="n">ms2Tolerance</span><span class="o">=</span><span class="n">ms2Tolerance</span><span class="p">)</span>
             <span class="n">spectrumScoreDatabase</span> <span class="o">=</span> <span class="n">spectrumScoreDatabase</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">target</span><span class="p">,</span><span class="n">decoy</span><span class="p">])</span>
@@ -1177,8 +1336,8 @@ Name: 1660, dtype: object
     <span class="n">spectrumScoreDatabase</span> <span class="o">=</span> <span class="n">spectrumScoreDatabase</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;Score&#39;</span><span class="p">,</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">spectrumScoreDatabase</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">matchAllSpectra</span><span class="p">(</span><span class="n">spectraFilePath</span><span class="p">,</span><span class="n">ms1Tolerance</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span><span class="n">ms2Tolerance</span><span class="o">=</span><span class="mf">0.1</span><span class="p">))</span>
+<span class="n">PSM</span> <span class="o">=</span> <span class="n">matchAllSpectra</span><span class="p">(</span><span class="n">spectraFilePath</span><span class="p">,</span><span class="n">ms1Tolerance</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span><span class="n">ms2Tolerance</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">PSM</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -1190,158 +1349,95 @@ Name: 1660, dtype: object
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Processing hela1ugul.12566.12566.2.dta
-Peptide matching scores for experimental spectrum  hela1ugul.12566.12566.2.dta
-      Monoisotopic Mass             Sequence  Score
-632           1899.8904    GPNPAFWWVNGQGDEVK      9
-1659          1899.8010   LGIYDADGDGDFDVDDAK     26
-2035          1899.8495    ANPMYNAVSNADLMDFK      4
-2657          1899.8363      NNFEFCEAHIPFYNR      7
-3030          1899.8017  TSSSSCSAHSSFSSTGQPR      6
-3379          1899.7855     CFSLDAFCHHFSNMNK      7 
 
-Target PSM:  Sequence             LGIYDADGDGDFDVDDAK
-Score                                26
-Type                             Target
-Spectrum    hela1ugul.12566.12566.2.dta
-Name: 1659, dtype: object 
-
-Decoy matching scores for experimental spectrum  hela1ugul.12566.12566.2.dta
-      Monoisotopic Mass            Sequence  Score
-1730          1899.8010  ADDVDFDGDGDADYIGLK     19
-3429          1899.7855    NMNSFHHCFADLSFCK      6 
-
-Decoy PSM:  Sequence             ADDVDFDGDGDADYIGLK
-Score                                19
-Type                              Decoy
-Spectrum    hela1ugul.12566.12566.2.dta
-Name: 1730, dtype: object 
-
-Processing hela1ugul.16509.16509.3.dta
-Peptide matching scores for experimental spectrum  hela1ugul.16509.16509.3.dta
-      Monoisotopic Mass                 Sequence  Score
-102           2228.2093   LAPDPSLVIYAIFPSGGVVADK     15
-389           2228.1338      AFNSHTWEQLGTLQLLSQR      9
-812           2228.2430     LLLENVLPAHVAPQFIGQNR     14
-1204          2228.0597  TEVEAGASGYSVTGGGDQGIFVK     17
-1669          2228.1576    GAIETYQEVASLPDVPADLLK     21
-2232          2228.1736    TALHLACANGHPEVVTLLVDR     15
-2833          2228.0862    FWAANVPPSEALQPSSSPSTR     14
-3162          2228.1107    HENNLSVLAISNMEASSTLAK      8 
-
-Target PSM:  Sequence          GAIETYQEVASLPDVPADLLK
-Score                                21
-Type                             Target
-Spectrum    hela1ugul.16509.16509.3.dta
-Name: 1669, dtype: object 
-
-Decoy matching scores for experimental spectrum  hela1ugul.16509.16509.3.dta
-      Monoisotopic Mass                 Sequence  Score
-796           2228.2430     NQGIFQPAVHAPLVNELLLR     11
-1639          2228.0597  VFIGQDGGGTVSYGSAGAEVETK      9
-2395          2228.1736    DVLLTVVEPHGNACALHLATR     10
-2879          2228.0862    TSPSSSPQLAESPPVNAAWFR     14 
-
-Decoy PSM:  Sequence          TSPSSSPQLAESPPVNAAWFR
-Score                                14
-Type                              Decoy
-Spectrum    hela1ugul.16509.16509.3.dta
-Name: 2879, dtype: object 
-
-Processing hela1ugul.2404.2404.2.dta
-Peptide matching scores for experimental spectrum  hela1ugul.2404.2404.2.dta
-      Monoisotopic Mass                   Sequence  Score
-1645          2101.9246         AVDWWGLGVVMYEMMCGR      9
-1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41
-1812          2101.8456        GDDEEGECSIDYVEMAVNK      5
-2192          2101.9341        DFNGSDASTQLNTHYAFSK      6 
-
-Target PSM:  Sequence    SSGNSSSSGSGSGSTSAGSSSPGAR
-Score                              41
-Type                           Target
-Spectrum    hela1ugul.2404.2404.2.dta
-Name: 1657, dtype: object 
-
-Decoy matching scores for experimental spectrum  hela1ugul.2404.2404.2.dta
-      Monoisotopic Mass             Sequence  Score
-1660          2101.9246   GCMMEYMVVGLGWWDVAR      7
-2146          2101.9341  SFAYHTNLQTSADSGNFDK      5 
-
-Decoy PSM:  Sequence           GCMMEYMVVGLGWWDVAR
-Score                               7
-Type                            Decoy
-Spectrum    hela1ugul.2404.2404.2.dta
-Name: 1660, dtype: object 
-
-Processing hela1ugul.2406.2406.3.dta
-Peptide matching scores for experimental spectrum  hela1ugul.2406.2406.3.dta
-      Monoisotopic Mass                   Sequence  Score
-1645          2101.9246         AVDWWGLGVVMYEMMCGR      4
-1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR      9
-1812          2101.8456        GDDEEGECSIDYVEMAVNK      6
-2192          2101.9341        DFNGSDASTQLNTHYAFSK      7 
-
-Target PSM:  Sequence    SSGNSSSSGSGSGSTSAGSSSPGAR
-Score                               9
-Type                           Target
-Spectrum    hela1ugul.2406.2406.3.dta
-Name: 1657, dtype: object 
-
-Decoy matching scores for experimental spectrum  hela1ugul.2406.2406.3.dta
-      Monoisotopic Mass             Sequence  Score
-1660          2101.9246   GCMMEYMVVGLGWWDVAR      5
-2146          2101.9341  SFAYHTNLQTSADSGNFDK      6 
-
-Decoy PSM:  Sequence          SFAYHTNLQTSADSGNFDK
-Score                               6
-Type                            Decoy
-Spectrum    hela1ugul.2406.2406.3.dta
-Name: 2146, dtype: object 
-
-Processing hela1ugul.3746.3746.2.dta
-Peptide matching scores for experimental spectrum  hela1ugul.3746.3746.2.dta
-      Monoisotopic Mass     Sequence  Score
-178           1177.5404    AQSYEYVYR      4
-699           1177.5015    DGYFWFMGR     10
-886           1177.4636   GHEDDSYEAR      6
-1981          1177.5074   QEDSPFQCPK     14
-2062          1177.5372    LMQVWCDQR      7
-2490          1177.5364  ASSPQGFDVDR     10
-3067          1177.4427  NGGCNHMQCSK      8
-3486          1177.5285  AEQEALTGECK      6 
-
-Target PSM:  Sequence                   QEDSPFQCPK
-Score                              14
-Type                           Target
-Spectrum    hela1ugul.3746.3746.2.dta
-Name: 1981, dtype: object 
-
-Decoy matching scores for experimental spectrum  hela1ugul.3746.3746.2.dta
-      Monoisotopic Mass     Sequence  Score
-1532          1177.5285   DALSMDEELR     11
-2094          1177.5372    QDCWVQMLR     12
-3095          1177.4427  SCQMHNCGGNK      5 
-
-Decoy PSM:  Sequence                    QDCWVQMLR
-Score                              12
-Type                            Decoy
-Spectrum    hela1ugul.3746.3746.2.dta
-Name: 2094, dtype: object 
-
-                       Sequence  Score    Type                     Spectrum
-1657  SSGNSSSSGSGSGSTSAGSSSPGAR     41  Target    hela1ugul.2404.2404.2.dta
-1659         LGIYDADGDGDFDVDDAK     26  Target  hela1ugul.12566.12566.2.dta
-1669      GAIETYQEVASLPDVPADLLK     21  Target  hela1ugul.16509.16509.3.dta
-1730         ADDVDFDGDGDADYIGLK     19   Decoy  hela1ugul.12566.12566.2.dta
-2879      TSPSSSPQLAESPPVNAAWFR     14   Decoy  hela1ugul.16509.16509.3.dta
-1981                 QEDSPFQCPK     14  Target    hela1ugul.3746.3746.2.dta
-2094                  QDCWVQMLR     12   Decoy    hela1ugul.3746.3746.2.dta
-1657  SSGNSSSSGSGSGSTSAGSSSPGAR      9  Target    hela1ugul.2406.2406.3.dta
-1660         GCMMEYMVVGLGWWDVAR      7   Decoy    hela1ugul.2404.2404.2.dta
-2146        SFAYHTNLQTSADSGNFDK      6   Decoy    hela1ugul.2406.2406.3.dta
-</pre>
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Sequence</th>
+      <th>Score</th>
+      <th>Type</th>
+      <th>Spectrum</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+      <td>Target</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+    </tr>
+    <tr>
+      <th>1659</th>
+      <td>LGIYDADGDGDFDVDDAK</td>
+      <td>0.053608</td>
+      <td>Target</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+    </tr>
+    <tr>
+      <th>1730</th>
+      <td>ADDVDFDGDGDADYIGLK</td>
+      <td>0.039175</td>
+      <td>Decoy</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+    </tr>
+    <tr>
+      <th>1981</th>
+      <td>QEDSPFQCPK</td>
+      <td>0.038997</td>
+      <td>Target</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+    </tr>
+    <tr>
+      <th>2094</th>
+      <td>QDCWVQMLR</td>
+      <td>0.033426</td>
+      <td>Decoy</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+    </tr>
+    <tr>
+      <th>1669</th>
+      <td>GAIETYQEVASLPDVPADLLK</td>
+      <td>0.029006</td>
+      <td>Target</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+    </tr>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.027607</td>
+      <td>Target</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+    </tr>
+    <tr>
+      <th>2879</th>
+      <td>TSPSSSPQLAESPPVNAAWFR</td>
+      <td>0.019337</td>
+      <td>Decoy</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+    </tr>
+    <tr>
+      <th>1660</th>
+      <td>GCMMEYMVVGLGWWDVAR</td>
+      <td>0.019178</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+    </tr>
+    <tr>
+      <th>2146</th>
+      <td>SFAYHTNLQTSADSGNFDK</td>
+      <td>0.018405</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+    </tr>
+  </tbody>
+</table>
 </div>
+</div>
+
 </div>
 
 </div>
@@ -1353,19 +1449,22 @@ Name: 2094, dtype: object
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="Confidence-assignment">Confidence assignment<a class="anchor-link" href="#Confidence-assignment">&#182;</a></h1>
+<h2 id="Some-notes-about-target-decoy-search-strategy">Some notes about target-decoy search strategy<a class="anchor-link" href="#Some-notes-about-target-decoy-search-strategy">&#182;</a></h2><p>For each experimental spectrum we selected the highest scoring theoretical spectrum as the best match (PSM), but in reality not all of these will be correct matches. Some of the experimental spectra might not be derived from peptide digests of the original protein, but instead stem from contaminating (bio)-molecules. In addition, the correct peptide sequence might not be present in the database or the experimental spectrum might be of poor quality (Elias &amp; Gygi, 2007).</p>
+<p>Because of these issues we need a statistically sound method of calling a match significant. Furthermore, when processing multiple spectra, we should guard ourselves against multiple testing issue, for example by controlling the false discovery rate (FDR) (although P-value or Expectation value based approaches also exist.</p>
+<p>The peptide decoy dataset provides an intuitive representation of the <strong>null hypothesis</strong>: any experimental spectrum that is queried against the decoys will result in decoy matches which are by definition incorrect (Elias &amp; Gygi, 2007; Käll et al., 2008). As such, it provides a nice estimation of the number of false positives.</p>
+<p>Decoys can be obtained by reversing the original target databases, like was done here, but also by shuffling or stochastically (e.g. using Markov models), and while there is no clear choice for this, the methods generally perform similarly (Jeong, Kim &amp; Bandeira, 2012).</p>
+<h3 id="P-value-calculation">P-value calculation<a class="anchor-link" href="#P-value-calculation">&#182;</a></h3><p>The decoy search allows us to calculate p-values by counting how many decoy PSM scores are greater than each target PSM score (Käll et al., 2008). However, note that, similar to Monte Carlo p-values, the accuracy depends on the size of the decoy database. In our case the p-values will only be able to take on five different values, but they are still illustrative.</p>
+
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">peptideCands</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="s1">&#39;P-value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">peptideCands</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">decoyCands</span><span class="o">.</span><span class="n">Score</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">decoyCands</span><span class="o">.</span><span class="n">Score</span><span class="o">.</span><span class="n">size</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-
-<span class="nb">print</span><span class="p">(</span><span class="n">peptideCands</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="s1">&#39;P-value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Decoy&#39;</span><span class="p">,</span><span class="s1">&#39;Score&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Decoy&#39;</span><span class="p">,</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">PSM</span><span class="p">)</span>
 </pre></div>
 
 </div>
@@ -1377,32 +1476,478 @@ Name: 2094, dtype: object
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>      Monoisotopic Mass                   Sequence  Score  P-value
-1645          2101.9246         AVDWWGLGVVMYEMMCGR      9      0.0
-1657          2101.8744  SSGNSSSSGSGSGSTSAGSSSPGAR     41      0.0
-1812          2101.8456        GDDEEGECSIDYVEMAVNK      5      1.0
-2192          2101.9341        DFNGSDASTQLNTHYAFSK      6      0.5
-</pre>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Sequence</th>
+      <th>Score</th>
+      <th>Type</th>
+      <th>Spectrum</th>
+      <th>P-value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+      <td>Target</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>1659</th>
+      <td>LGIYDADGDGDFDVDDAK</td>
+      <td>0.053608</td>
+      <td>Target</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>1730</th>
+      <td>ADDVDFDGDGDADYIGLK</td>
+      <td>0.039175</td>
+      <td>Decoy</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>1981</th>
+      <td>QEDSPFQCPK</td>
+      <td>0.038997</td>
+      <td>Target</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+      <td>0.2</td>
+    </tr>
+    <tr>
+      <th>2094</th>
+      <td>QDCWVQMLR</td>
+      <td>0.033426</td>
+      <td>Decoy</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+      <td>0.4</td>
+    </tr>
+    <tr>
+      <th>1669</th>
+      <td>GAIETYQEVASLPDVPADLLK</td>
+      <td>0.029006</td>
+      <td>Target</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+      <td>0.4</td>
+    </tr>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.027607</td>
+      <td>Target</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+      <td>0.4</td>
+    </tr>
+    <tr>
+      <th>2879</th>
+      <td>TSPSSSPQLAESPPVNAAWFR</td>
+      <td>0.019337</td>
+      <td>Decoy</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+      <td>0.6</td>
+    </tr>
+    <tr>
+      <th>1660</th>
+      <td>GCMMEYMVVGLGWWDVAR</td>
+      <td>0.019178</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.8</td>
+    </tr>
+    <tr>
+      <th>2146</th>
+      <td>SFAYHTNLQTSADSGNFDK</td>
+      <td>0.018405</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+      <td>1.0</td>
+    </tr>
+  </tbody>
+</table>
 </div>
+</div>
+
 </div>
 
 </div>
 </div>
 
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Multiple-testing-and-false-discovery">Multiple testing and false discovery<a class="anchor-link" href="#Multiple-testing-and-false-discovery">&#182;</a></h3><p>The decoy search also provides an elegant way to estimate the false discovery rate (FDR) and guard against multiple testing issues. The FDR describes the expected number of false positives among all significant/accepted PSM's. By setting a scoring or p-value threshold, the FDR is simply the number of decoys PSM's higher than this threshold, divided by the number of target PSM's (Käll et al., 2008): $$ FDR_{t} = \frac{N_{decoy}}{N_{target}} $$</p>
+<p>where $N_{decoy}$ and $N_{target}$ are the number of PSM scores larger than the threshold $t$.</p>
+<h3 id="Q-values">Q-values<a class="anchor-link" href="#Q-values">&#182;</a></h3><p>FDR's can be a bit unintuitive, because they are defined for a set of spectra, rather than being a function of the score or p-value of a single PSM. <strong>Q-values</strong> provide a more elegant solution: they describe the minimum FDR threshold at which the current PSM would still be accepted (Käll et al., 2008; Noble, 2009). In other words, the q-value estimates the number of false positives among all PSM's with a score higher than the current PSM.</p>
+<p>Note that the decoy PSM's do not get assigned a q-value.</p>
+
+</div>
+</div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># reverse PSM list to allow checking if current q-value is larger than previous ones</span>
+<span class="n">revPSM</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">iloc</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="c1"># initialize q-value column</span>
+<span class="n">revPSM</span><span class="p">[</span><span class="s1">&#39;Q-value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+<span class="c1"># retrieve decoy and target scores</span>
+<span class="n">decoys</span> <span class="o">=</span> <span class="n">revPSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">revPSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Decoy&#39;</span><span class="p">]</span>
+<span class="n">targets</span> <span class="o">=</span> <span class="n">revPSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">revPSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Target&#39;</span><span class="p">]</span>
+<span class="c1"># set variable to remember previous FDR during loop</span>
+<span class="n">previousFDR</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="c1"># Set the q-value for each PSM to the smallest FDR cut-off at which it would still be accepted</span>
+<span class="c1"># Prevents q-values for higher scores to be lower than for lower scores by looking back at previous values</span>
+<span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">revPSM</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Decoy&#39;</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="n">FDR</span> <span class="o">=</span> <span class="p">(</span><span class="n">decoys</span><span class="o">.</span><span class="n">Score</span> <span class="o">&gt;=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span> <span class="p">(</span><span class="n">targets</span><span class="o">.</span><span class="n">Score</span> <span class="o">&gt;=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">FDR</span> <span class="o">=</span> <span class="n">FDR</span> <span class="k">if</span> <span class="n">previousFDR</span> <span class="o">&gt;=</span> <span class="n">FDR</span> <span class="k">else</span> <span class="n">previousFDR</span>
+    <span class="n">revPSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">,</span><span class="s1">&#39;Q-value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">FDR</span>
+    <span class="n">previousFDR</span> <span class="o">=</span> <span class="n">FDR</span>
+<span class="c1"># return again sorted from high to low</span>
+<span class="n">PSM</span> <span class="o">=</span> <span class="n">revPSM</span><span class="o">.</span><span class="n">iloc</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">display</span><span class="p">(</span><span class="n">PSM</span><span class="p">)</span>
 </pre></div>
 
 </div>
 </div>
 </div>
 
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Sequence</th>
+      <th>Score</th>
+      <th>Type</th>
+      <th>Spectrum</th>
+      <th>P-value</th>
+      <th>Q-value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+      <td>Target</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>1659</th>
+      <td>LGIYDADGDGDFDVDDAK</td>
+      <td>0.053608</td>
+      <td>Target</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>1730</th>
+      <td>ADDVDFDGDGDADYIGLK</td>
+      <td>0.039175</td>
+      <td>Decoy</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.2</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1981</th>
+      <td>QEDSPFQCPK</td>
+      <td>0.038997</td>
+      <td>Target</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+      <td>0.2</td>
+      <td>0.333333</td>
+    </tr>
+    <tr>
+      <th>2094</th>
+      <td>QDCWVQMLR</td>
+      <td>0.033426</td>
+      <td>Decoy</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+      <td>0.4</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1669</th>
+      <td>GAIETYQEVASLPDVPADLLK</td>
+      <td>0.029006</td>
+      <td>Target</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+      <td>0.4</td>
+      <td>0.400000</td>
+    </tr>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.027607</td>
+      <td>Target</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+      <td>0.4</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>2879</th>
+      <td>TSPSSSPQLAESPPVNAAWFR</td>
+      <td>0.019337</td>
+      <td>Decoy</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+      <td>0.6</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1660</th>
+      <td>GCMMEYMVVGLGWWDVAR</td>
+      <td>0.019178</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.8</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2146</th>
+      <td>SFAYHTNLQTSADSGNFDK</td>
+      <td>0.018405</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+      <td>1.0</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="FDR-filter">FDR-filter<a class="anchor-link" href="#FDR-filter">&#182;</a></h3><p>The FDR threshold can be set in the command line, but it defaults to 0.05. Because there are so few PSM's in our example, there is no score threshold which exactly corresponds to 0.05, so the function takes the next lower option, which is zero in this case. This also corresponds to selecting all the q-values which are equal to zero. Only the target PSM's that are accepted at the given FDR threshold are retained in the end.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">decoys</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;Decoy&#39;</span><span class="p">]</span>
+<span class="n">targets</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Target&#39;</span><span class="p">]</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">Score</span><span class="o">.</span><span class="n">sort_values</span><span class="p">()</span>
+<span class="n">FDR</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="k">for</span> <span class="n">potentialCutOff</span> <span class="ow">in</span> <span class="n">scores</span><span class="p">:</span>
+    <span class="n">FDR</span> <span class="o">=</span> <span class="p">(</span><span class="n">decoys</span><span class="o">.</span><span class="n">Score</span> <span class="o">&gt;=</span> <span class="n">potentialCutOff</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">/</span> <span class="p">(</span><span class="n">targets</span><span class="o">.</span><span class="n">Score</span> <span class="o">&gt;=</span> <span class="n">potentialCutOff</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">FDR</span> <span class="o">&lt;=</span> <span class="mf">0.05</span><span class="p">:</span>
+        <span class="n">cutOff</span> <span class="o">=</span> <span class="n">potentialCutOff</span>
+        <span class="k">break</span>
+<span class="n">accepted</span> <span class="o">=</span> <span class="n">targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">targets</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">cutOff</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="c1"># Drop decoys from dataframe</span>
+<span class="n">accepted</span> <span class="o">=</span> <span class="n">accepted</span><span class="p">[</span><span class="n">accepted</span><span class="o">.</span><span class="n">Type</span> <span class="o">==</span> <span class="s1">&#39;Target&#39;</span><span class="p">]</span>
+<span class="n">display</span><span class="p">(</span><span class="n">accepted</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Sequence</th>
+      <th>Score</th>
+      <th>Type</th>
+      <th>Spectrum</th>
+      <th>P-value</th>
+      <th>Q-value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+      <td>Target</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>1659</th>
+      <td>LGIYDADGDGDFDVDDAK</td>
+      <td>0.053608</td>
+      <td>Target</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Concatenated-versus-separate-decoy-search">Concatenated versus separate decoy search<a class="anchor-link" href="#Concatenated-versus-separate-decoy-search">&#182;</a></h3><p>We have performed a separate search against the decoy and target database, but it has been suggested that it is more sensible to perform a concatenated search for the purposes of FDR estimation. In this setting decoy and target PSM scores for the same spectrum are competing directly with each other, which avoids too conservative FDR estimation (Elias &amp; Gygi, 2007; Jeong, Kim &amp; Bandeira, 2012). On the other hand, in our simple setting this would have reduced the number of PSM's to five instead of ten, which would have made inference even more difficult.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Protein-Inference">Protein Inference<a class="anchor-link" href="#Protein-Inference">&#182;</a></h2><p>The final step is to search the sequences in the protein database for sub-string matches to the accepted peptides. A list of the UniProtKB/Swiss-Prot identifiers is appended to each PSM.</p>
+<p>We have controlled the FDR at the level of the PSM's, but this does not tell us anything about the FDR at the protein-level (Cottrell, 2011). Our approach does not attempt to assign probabilities to the protein assignments (for methods that do, see Teng, Huang &amp; He (2013) and Reiter et al. (2009)), but we do note that we can be more confident in proteins that are infered from multiple peptides.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">accepted</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="s1">&#39;Inferred Proteins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">accepted</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">proteinData</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">proteinData</span><span class="o">.</span><span class="n">Sequence</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Sequence&#39;</span><span class="p">])]</span><span class="o">.</span><span class="n">Identifier</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">accepted</span><span class="p">)</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+
+<div class="output_html rendered_html output_subarea ">
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Sequence</th>
+      <th>Score</th>
+      <th>Type</th>
+      <th>Spectrum</th>
+      <th>P-value</th>
+      <th>Q-value</th>
+      <th>Inferred Proteins</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+      <td>Target</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>[[Q12797], [Q12797]]</td>
+    </tr>
+    <tr>
+      <th>1659</th>
+      <td>LGIYDADGDGDFDVDDAK</td>
+      <td>0.053608</td>
+      <td>Target</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>[[Q12797], [Q12797]]</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>The above table is the final output that is received upon running this tool. The last column contains the UniProtKB/Swiss-Prot identifiers of all the proteins in the protein database that contain the exact peptide sequence of the PSM's that were accepted.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h1 id="References">References<a class="anchor-link" href="#References">&#182;</a></h1><ul>
+<li>Cottrell, J. (2011). Protein identification using MS/MS data. Journal Of Proteomics, 74(10), 1842-1851. <a href="http://dx.doi.org/10.1016/j.jprot.2011.05.014">http://dx.doi.org/10.1016/j.jprot.2011.05.014</a></li>
+<li>Elias, J., &amp; Gygi, S. (2007). Target-decoy search strategy for increased confidence in large-scale protein identifications by mass spectrometry. Nature Methods, 4(3), 207-214. <a href="http://dx.doi.org/10.1038/nmeth1019">http://dx.doi.org/10.1038/nmeth1019</a></li>
+<li>Jeong, K., Kim, S., &amp; Bandeira, N. (2012). False discovery rates in spectral identification. BMC Bioinformatics, 13(Suppl 16), S2. <a href="http://dx.doi.org/10.1186/1471-2105-13-s16-s2">http://dx.doi.org/10.1186/1471-2105-13-s16-s2</a></li>
+<li>Käll, L., Storey, J., MacCoss, M., &amp; Noble, W. (2008). Assigning Significance to Peptides Identified by Tandem Mass Spectrometry Using Decoy Databases. J. Proteome Res., 7(1), 29-34. <a href="http://dx.doi.org/10.1021/pr700600n">http://dx.doi.org/10.1021/pr700600n</a></li>
+<li>Noble, W. (2009). How does multiple testing correction work?. Nat Biotechnol, 27(12), 1135-1137. <a href="http://dx.doi.org/10.1038/nbt1209-1135">http://dx.doi.org/10.1038/nbt1209-1135</a></li>
+<li>Reiter, L., Claassen, M., Schrimpf, S., Jovanovic, M., Schmidt, A., &amp; Buhmann, J. et al. (2009). Protein Identification False Discovery Rates for Very Large Proteomics Data Sets Generated by Tandem Mass Spectrometry. Molecular &amp; Cellular Proteomics, 8(11), 2405-2417. <a href="http://dx.doi.org/10.1074/mcp.m900317-mcp200">http://dx.doi.org/10.1074/mcp.m900317-mcp200</a></li>
+<li>Sadygov, R., Cociorva, D., &amp; Yates, J. (2004). Large-scale database searching using tandem mass spectra: Looking up the answer in the back of the book. Nature Methods, 1(3), 195-202. <a href="http://dx.doi.org/10.1038/nmeth725">http://dx.doi.org/10.1038/nmeth725</a></li>
+<li>Teng, B., Huang, T., &amp; He, Z. (2013). Decoy-free protein-level false discovery rate estimation. Bioinformatics, 30(5), 675-681. <a href="http://dx.doi.org/10.1093/bioinformatics/btt431">http://dx.doi.org/10.1093/bioinformatics/btt431</a></li>
+</ul>
+
+</div>
+</div>
 </div>
     </div>
   </div>
