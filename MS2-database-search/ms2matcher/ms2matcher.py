@@ -350,7 +350,7 @@ def expPeakToFragmentsDict(experimentalPeak,theoreticalFragmentMassDict,ms2toler
 
 def scoreForTheoreticalPeptide(experimentalMZs,theoreticalPeptideSequence,charge,ms2tolerance=0.1):
     """
-    Calculates the number of experimental m/z peaks for which a match can be found
+    Calculates the percentage of experimental m/z peaks for which a match can be found
     in the b/y ion fragment m/z lists derived from a given theoretical peptide sequence.
 
     Parameters
@@ -370,7 +370,7 @@ def scoreForTheoreticalPeptide(experimentalMZs,theoreticalPeptideSequence,charge
     -------
     matchCounter : float
         The number of peaks in the spectrum that were matched to a fragment mass
-        of the theoretical peptide.
+        of the theoretical peptide divided by the number of experimental peaks.
     """
     # calculate theoretical fragment masses NOTE: better to supply dictionary directly? this would encapsulate the choice of charge...
     theoreticalFragmentMassDict = getAllFragmentsChargeX(theoreticalPeptideSequence,charge)
@@ -387,7 +387,9 @@ def scoreForTheoreticalPeptide(experimentalMZs,theoreticalPeptideSequence,charge
         # and returns 1 if this is the case
         matchCounter += expPeakToFragmentsDict(experimentalPeak,theoreticalFragmentMassDict,ms2tolerance)
 
-    return matchCounter
+    score = matchCounter/experimentalMZs.size
+
+    return score
 
 def matchExpSpectrumToCandidatePeptides(experimentalMZs,candidatePeptides,charge,ms2tolerance=0.1):
     """
