@@ -28,6 +28,7 @@ This tool relies on the following packages:
 - pandas (http://pandas.pydata.org/)
 - biopython (http://biopython.org/wiki/Main_Page)
 - pyteomics (https://pythonhosted.org/pyteomics/)
+- bioservices (https://pythonhosted.org/bioservices/)
 
 Please refer to the packages' manuals, pip (https://docs.python.org/3.6/installing/index.html) or a package management system such as Conda (http://conda.pydata.org/docs/) for more information on how to install additional python packages.
 
@@ -248,15 +249,15 @@ print(ms.getAllFragmentsChargeX(sequence='AVDWWGLGVVMYEMMCGR',charge=precursorCh
 
     y ions ['AVDWWGLGVVMYEMMCGR', 'VDWWGLGVVMYEMMCGR', 'DWWGLGVVMYEMMCGR', 'WWGLGVVMYEMMCGR', 'WGLGVVMYEMMCGR', 'GLGVVMYEMMCGR', 'LGVVMYEMMCGR', 'GVVMYEMMCGR', 'VVMYEMMCGR', 'VMYEMMCGR', 'MYEMMCGR', 'YEMMCGR', 'EMMCGR', 'MMCGR', 'MCGR', 'CGR', 'GR', 'R']
     b ions: ['A', 'AV', 'AVD', 'AVDW', 'AVDWW', 'AVDWWG', 'AVDWWGL', 'AVDWWGLG', 'AVDWWGLGV', 'AVDWWGLGVV', 'AVDWWGLGVVM', 'AVDWWGLGVVMY', 'AVDWWGLGVVMYE', 'AVDWWGLGVVMYEM', 'AVDWWGLGVVMYEMM', 'AVDWWGLGVVMYEMMC', 'AVDWWGLGVVMYEMMCG', 'AVDWWGLGVVMYEMMCGR']
-    {'bIons+1': array([   72.04439025,   171.11280416,   286.13974719,   472.21906014,
-             658.29837309,   715.31983681,   828.40390079,   885.42536451,
-             984.49377842,  1083.56219233,  1214.60267725,  1377.66600578,
-            1506.70859887,  1637.74908378,  1768.78956869,  1871.79875348,
-            1928.8202172 ,  2084.92132822]), 'yIons+1': array([ 2102.9318929 ,  2031.89477912,  1932.82636521,  1817.79942218,
+    {'yIons+1': array([ 2102.9318929 ,  2031.89477912,  1932.82636521,  1817.79942218,
             1631.72010923,  1445.64079628,  1388.61933256,  1275.53526859,
             1218.51380486,  1119.44539095,  1020.37697704,   889.33649213,
              726.27316359,   597.23057051,   466.19008559,   335.14960068,
-             232.14041589,   175.11895217])}
+             232.14041589,   175.11895217]), 'bIons+1': array([   72.04439025,   171.11280416,   286.13974719,   472.21906014,
+             658.29837309,   715.31983681,   828.40390079,   885.42536451,
+             984.49377842,  1083.56219233,  1214.60267725,  1377.66600578,
+            1506.70859887,  1637.74908378,  1768.78956869,  1871.79875348,
+            1928.8202172 ,  2084.92132822])}
     
 
 The **monoisotopic m/z values** are calculated using the pyteomics package. For more information, please check its documentation: https://pythonhosted.org/pyteomics/mass.html
@@ -1045,6 +1046,261 @@ display(accepted)
 
 
 The above table is the final output that is received upon running this tool. The last column contains the UniProtKB/Swiss-Prot identifiers of all the proteins in the protein database that contain the exact peptide sequence of the PSM's that were accepted.
+
+For completion, we now offer a complete overview of all the identified proteins, including those that were matched by the decoy peptides (although these do not correspond to any proteins in the database).
+
+
+```python
+pd.set_option('chained_assignment',None)
+PSM.loc[:,'Inferred Proteins'] = PSM.apply(lambda row: proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])].Identifier.tolist() ,axis=1)
+display(PSM)
+```
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Sequence</th>
+      <th>Score</th>
+      <th>Type</th>
+      <th>Spectrum</th>
+      <th>P-value</th>
+      <th>Q-value</th>
+      <th>Inferred Proteins</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.112329</td>
+      <td>Target</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>[[Q12797], [Q12797]]</td>
+    </tr>
+    <tr>
+      <th>1659</th>
+      <td>LGIYDADGDGDFDVDDAK</td>
+      <td>0.053608</td>
+      <td>Target</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>[[Q12797], [Q12797]]</td>
+    </tr>
+    <tr>
+      <th>1730</th>
+      <td>ADDVDFDGDGDADYIGLK</td>
+      <td>0.039175</td>
+      <td>Decoy</td>
+      <td>hela1ugul.12566.12566.2.dta</td>
+      <td>0.2</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>1981</th>
+      <td>QEDSPFQCPK</td>
+      <td>0.038997</td>
+      <td>Target</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+      <td>0.2</td>
+      <td>0.333333</td>
+      <td>[[Q96L96]]</td>
+    </tr>
+    <tr>
+      <th>2094</th>
+      <td>QDCWVQMLR</td>
+      <td>0.033426</td>
+      <td>Decoy</td>
+      <td>hela1ugul.3746.3746.2.dta</td>
+      <td>0.4</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>1669</th>
+      <td>GAIETYQEVASLPDVPADLLK</td>
+      <td>0.029006</td>
+      <td>Target</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+      <td>0.4</td>
+      <td>0.400000</td>
+      <td>[[Q12797], [Q12797]]</td>
+    </tr>
+    <tr>
+      <th>1657</th>
+      <td>SSGNSSSSGSGSGSTSAGSSSPGAR</td>
+      <td>0.027607</td>
+      <td>Target</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+      <td>0.4</td>
+      <td>0.000000</td>
+      <td>[[Q12797], [Q12797]]</td>
+    </tr>
+    <tr>
+      <th>2879</th>
+      <td>TSPSSSPQLAESPPVNAAWFR</td>
+      <td>0.019337</td>
+      <td>Decoy</td>
+      <td>hela1ugul.16509.16509.3.dta</td>
+      <td>0.6</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>1660</th>
+      <td>GCMMEYMVVGLGWWDVAR</td>
+      <td>0.019178</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2404.2404.2.dta</td>
+      <td>0.8</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>2146</th>
+      <td>SFAYHTNLQTSADSGNFDK</td>
+      <td>0.018405</td>
+      <td>Decoy</td>
+      <td>hela1ugul.2406.2406.3.dta</td>
+      <td>1.0</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+### UniProt database search
+
+To conclude, we showcase the bioservices package that can retrieve the UniProt entries for the inferred proteins. This is the final output the tool will provide the user with when run via the command line.
+
+
+```python
+from bioservices import UniProt
+u = UniProt(verbose=False)
+
+all_identifiers = []
+for index, identifierlist in PSM['Inferred Proteins'].iteritems():
+    for identifier in identifierlist:
+        all_identifiers.append(''.join(identifier))
+#print(u.search('Q12797',frmt="tab", columns="id,protein names,families,genes,organism"))
+display(u.get_df(set(all_identifiers)))
+```
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Entry</th>
+      <th>Entry name</th>
+      <th>Gene names</th>
+      <th>Gene names  (primary )</th>
+      <th>Gene names  (synonym )</th>
+      <th>Gene names  (ordered locus )</th>
+      <th>Gene names  (ORF )</th>
+      <th>Organism</th>
+      <th>Organism ID</th>
+      <th>Protein names</th>
+      <th>...</th>
+      <th>Miscellaneous [CC]</th>
+      <th>Keywords</th>
+      <th>Protein existence</th>
+      <th>Status</th>
+      <th>Sequence annotation (Features)</th>
+      <th>Protein families</th>
+      <th>Version</th>
+      <th>Comments</th>
+      <th>Cross-reference</th>
+      <th>Pathway.1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Q12797</td>
+      <td>ASPH_HUMAN</td>
+      <td>[ASPH BAH]</td>
+      <td>ASPH</td>
+      <td>BAH</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Homo sapiens (Human)</td>
+      <td>9606</td>
+      <td>Aspartyl/asparaginyl beta-hydroxylase (EC 1.14...</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>[3D-structure, Alternative splicing, Calcium, ...</td>
+      <td>Evidence at protein level</td>
+      <td>reviewed</td>
+      <td>NaN</td>
+      <td>[Aspartyl/asparaginyl beta-hydroxylase family]</td>
+      <td>160</td>
+      <td>[Alternative products (1), Catalytic activity ...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>Q96L96</td>
+      <td>ALPK3_HUMAN</td>
+      <td>[ALPK3 KIAA1330 MAK]</td>
+      <td>ALPK3</td>
+      <td>KIAA1330 MAK</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Homo sapiens (Human)</td>
+      <td>9606</td>
+      <td>Alpha-protein kinase 3 (EC 2.7.11.-) (Muscle a...</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>[Complete proteome, Developmental protein, Dis...</td>
+      <td>Evidence at transcript level</td>
+      <td>reviewed</td>
+      <td>NaN</td>
+      <td>[Protein kinase superfamily, Alpha-type protei...</td>
+      <td>103</td>
+      <td>[Function (1), Sequence similarities (3), Subc...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>O43681</td>
+      <td>ASNA_HUMAN</td>
+      <td>[ASNA1 ARSA TRC40]</td>
+      <td>ASNA1</td>
+      <td>ARSA TRC40</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Homo sapiens (Human)</td>
+      <td>9606</td>
+      <td>ATPase ASNA1 (EC 3.6.-.-) (Arsenical pump-driv...</td>
+      <td>...</td>
+      <td>NaN</td>
+      <td>[ATP-binding, Acetylation, Complete proteome, ...</td>
+      <td>Evidence at protein level</td>
+      <td>reviewed</td>
+      <td>NaN</td>
+      <td>[ArsA ATPase family]</td>
+      <td>149</td>
+      <td>[Function (1), Kinetics (1), Sequence similari...</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+<p>3 rows × 99 columns</p>
+</div>
+
 
 # References
 
