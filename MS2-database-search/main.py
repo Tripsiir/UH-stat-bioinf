@@ -273,7 +273,7 @@ def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
         if FDR <= desiredFDR:
             cutOff = potentialCutOff
             break
-    print('Specified FDR level =',args.desiredFDR)
+    print('\nSpecified FDR level =',args.desiredFDR)
     print('\nUsing the cut-off value {} to achieve an FDR of {}%.\n'.format(cutOff,FDR))
 
     # Drop decoys from dataframe
@@ -310,4 +310,19 @@ def retrieveProteins(spectrumScoreDatabase):
     return spectrumScoreDatabase
 
 print('\n Finding protein identifiers associated with the matched peptides...\n')
-print(retrieveProteins(PSM))
+PSM = retrieveProteins(PSM)
+print(PSM)
+input("\n\nPress Enter to continue...")
+
+
+print('\n Looking up identifiers on UniProt...\n')
+
+from bioservices import UniProt
+u = UniProt(verbose=False)
+
+all_identifiers = []
+for index, identifierlist in PSM['Inferred Proteins'].iteritems():
+    for identifier in identifierlist:
+        all_identifiers.append(''.join(identifier))
+#print(u.search('Q12797',frmt="tab", columns="id,protein names,families,genes,organism"))
+print(u.get_df(set(all_identifiers)))
