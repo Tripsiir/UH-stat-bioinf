@@ -399,7 +399,7 @@ python main.py /data/spectra/ -t1 50 -t2 0.1 -fdr 0.05
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Experimental spectra are imported into numpy arrays. Normally, the path to the file is specified when the tool is run via the command line, but for demonstration purposes the underlying function is shown here.</p>
-<p>The .dta file is a tab-deliminated file where the first line contains the precursor m/z value (in (M+H)^+1 format) and the charge, and all the following lines contain <strong>m/z values and intensities</strong>.</p>
+<p>The .dta file is a tab-delimitated file where the first line contains the precursor m/z value (in (M+H)^+1 format) and the charge, and all the following lines contain <strong>m/z values and intensities</strong>.</p>
 
 </div>
 </div>
@@ -733,7 +733,7 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>For each experimental m/z value</strong>, the <strong>theoretical fragment arrays</strong> are queried to find a corresponding mass. The matching tolerance defaults to 0.1 Dalton, but can be specified in the command line using the parameter -t2.</p>
-<p>If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still only count as an increment of 1, although we do not expect this to occurr often, since the ion residu masses would have to differ by exactly 18 Da.</p>
+<p>If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still only count as an increment of 1, although we do not expect this to occur often, since the ion residue masses would have to differ by exactly 18 Da.</p>
 <p>After counting all the peaks, this sum is then divided by the total number of experimental peaks. In other words, the <strong>percentage of matched experimental peaks</strong> is used as the score.</p>
 <p>This procedure is then performed for <strong>every candidate peptide</strong> and the scores are stored in the pandas DataFrame. Note that duplicates are removed in case the peptide database is not unique.</p>
 
@@ -814,7 +814,7 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 <h3 id="Motivation-for-using-the-percentage-count-as-a-score">Motivation for using the percentage count as a score<a class="anchor-link" href="#Motivation-for-using-the-percentage-count-as-a-score">&#182;</a></h3><p>Note that we are matching experimental to theoretical fragments here. We divided the number of matches by the total number of experimental peaks, as opposed to those in the theoretical spectrum. Our motivation for this is the following:</p>
 <ul>
 <li>Our main point of interest is the observed experimental spectrum. We aim to explain this data as well as possible. Any peak that can be found in the theoretical database is a peak that can be explained. </li>
-<li>The reverse, checking how many of the theoretical peaks are actually observed, is of less importances in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed, e.g. incomplete fragmentation leads to missing ions. But this does not mean that the experimental spectrum did not originate from the peptide in question.</li>
+<li>The reverse, checking how many of the theoretical peaks are actually observed, is of less importance in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed, e.g. incomplete fragmentation leads to missing ions. But this does not mean that the experimental spectrum did not originate from the peptide in question.</li>
 <li>By dividing by the number of expected theoretical peaks, we are penalizing observed spectra where for example the shortest or longest ions were not observed, but this should not be indicative of a worse match.</li>
 <li>The opposite does not hold either: a theoretical spectrum with only a few peaks might obtain a high score, if almost all of these can be matched to the theoretical spectrum. However, all the other true peaks in the theoretical spectrum cannot be explained by the theoretical one, yet we are not penalizing the score if we divide by the number of theoretical peaks. This peptide would obtain the same score as a peptide which matches additional theoretical peaks, or a lower score than a peptide which matches additional ones, but also lacks a few.</li>
 <li>Any electrical noise or chemical noise (contamination) in the experimental spectrum might result in erroneous matches, but we are working under the assumption that the signal of the peptide that was selected during MS1 will be stronger than the noise.</li>
@@ -835,7 +835,7 @@ b ions: [&apos;A&apos;, &apos;AV&apos;, &apos;AVD&apos;, &apos;AVDW&apos;, &apos
 <li>First of all, all theoretical spectra consist of only the monoisotopic m/z values.</li>
 <li>Consequently, all peptide candidates will fail to match to the higher mass isotopic peaks in the theoretical fragment (unless a different y/b ion has the same m/z as a higher order isotopic peak of a different ion). The scores of the peptides will systematically be lower by the same amount, i.e. their ranking will be consistent.</li>
 </ul>
-<p>An alternative strategy would be to first de-isotope the experimental spectrum, but this would require accuracte calling of true peaks and can be difficult if there is noise or overlap between the b/y ion series.</p>
+<p>An alternative strategy would be to first de-isotope the experimental spectrum, but this would require accurate calling of true peaks and can be difficult if there is noise or overlap between the b/y ion series.</p>
 
 </div>
 </div>
@@ -1224,7 +1224,7 @@ Name: 1660, dtype: object
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[26]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
@@ -1461,7 +1461,7 @@ Name: 1660, dtype: object
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[27]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="s1">&#39;P-value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Decoy&#39;</span><span class="p">,</span><span class="s1">&#39;Score&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Decoy&#39;</span><span class="p">,</span><span class="s1">&#39;Score&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -1598,7 +1598,7 @@ Name: 1660, dtype: object
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[28]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># reverse PSM list to allow checking if current q-value is larger than previous ones</span>
@@ -1762,7 +1762,7 @@ Name: 1660, dtype: object
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[29]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">decoys</span> <span class="o">=</span> <span class="n">PSM</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">PSM</span><span class="p">[</span><span class="s1">&#39;Type&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;Decoy&#39;</span><span class="p">]</span>
@@ -1850,14 +1850,14 @@ Name: 1660, dtype: object
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Protein-Inference">Protein Inference<a class="anchor-link" href="#Protein-Inference">&#182;</a></h2><p>The final step is to search the sequences in the protein database for sub-string matches to the accepted peptides. A list of the UniProtKB/Swiss-Prot identifiers is appended to each PSM.</p>
-<p>We have controlled the FDR at the level of the PSM's, but this does not tell us anything about the FDR at the protein-level (Cottrell, 2011). Our approach does not attempt to assign probabilities to the protein assignments (for methods that do, see Teng, Huang &amp; He (2013) and Reiter et al. (2009)), but we do note that we can be more confident in proteins that are infered from multiple peptides.</p>
+<p>We have controlled the FDR at the level of the PSM's, but this does not tell us anything about the FDR at the protein-level (Cottrell, 2011). Our approach does not attempt to assign probabilities to the protein assignments (for methods that do, see Teng, Huang &amp; He (2013) and Reiter et al. (2009)), but we do note that we can be more confident in proteins that are inferred from multiple peptides.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">accepted</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span><span class="s1">&#39;Inferred Proteins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">accepted</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">proteinData</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">proteinData</span><span class="o">.</span><span class="n">Sequence</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Sequence&#39;</span><span class="p">])]</span><span class="o">.</span><span class="n">Identifier</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -1943,7 +1943,7 @@ Name: 1660, dtype: object
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[44]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s1">&#39;chained_assignment&#39;</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span>
@@ -2109,7 +2109,7 @@ Name: 1660, dtype: object
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[43]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">bioservices</span> <span class="k">import</span> <span class="n">UniProt</span>

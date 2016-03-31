@@ -122,7 +122,7 @@ display(peptideData[:5])
 
 Experimental spectra are imported into numpy arrays. Normally, the path to the file is specified when the tool is run via the command line, but for demonstration purposes the underlying function is shown here.
 
-The .dta file is a tab-deliminated file where the first line contains the precursor m/z value (in (M+H)^+1 format) and the charge, and all the following lines contain **m/z values and intensities**.
+The .dta file is a tab-delimitated file where the first line contains the precursor m/z value (in (M+H)^+1 format) and the charge, and all the following lines contain **m/z values and intensities**.
 
 
 ```python
@@ -277,7 +277,7 @@ print(mass.calculate_mass(sequence='R',ion_type='b',charge=1))
 
 **For each experimental m/z value**, the **theoretical fragment arrays** are queried to find a corresponding mass. The matching tolerance defaults to 0.1 Dalton, but can be specified in the command line using the parameter -t2.
 
-If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still only count as an increment of 1, although we do not expect this to occurr often, since the ion residu masses would have to differ by exactly 18 Da. 
+If a matching value is found, in either the b or y ion array, the score is incremented by 1. A match in both the y and b ions would still only count as an increment of 1, although we do not expect this to occur often, since the ion residue masses would have to differ by exactly 18 Da. 
 
 After counting all the peaks, this sum is then divided by the total number of experimental peaks. In other words, the **percentage of matched experimental peaks** is used as the score.
 
@@ -335,7 +335,7 @@ display(peptideCands)
 Note that we are matching experimental to theoretical fragments here. We divided the number of matches by the total number of experimental peaks, as opposed to those in the theoretical spectrum. Our motivation for this is the following:
 
 - Our main point of interest is the observed experimental spectrum. We aim to explain this data as well as possible. Any peak that can be found in the theoretical database is a peak that can be explained. 
-- The reverse, checking how many of the theoretical peaks are actually observed, is of less importances in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed, e.g. incomplete fragmentation leads to missing ions. But this does not mean that the experimental spectrum did not originate from the peptide in question.
+- The reverse, checking how many of the theoretical peaks are actually observed, is of less importance in our opinion. Indeed, there could be many reasons why a certain theoretically predicted y or b ion might not be observed, e.g. incomplete fragmentation leads to missing ions. But this does not mean that the experimental spectrum did not originate from the peptide in question.
 - By dividing by the number of expected theoretical peaks, we are penalizing observed spectra where for example the shortest or longest ions were not observed, but this should not be indicative of a worse match.
 - The opposite does not hold either: a theoretical spectrum with only a few peaks might obtain a high score, if almost all of these can be matched to the theoretical spectrum. However, all the other true peaks in the theoretical spectrum cannot be explained by the theoretical one, yet we are not penalizing the score if we divide by the number of theoretical peaks. This peptide would obtain the same score as a peptide which matches additional theoretical peaks, or a lower score than a peptide which matches additional ones, but also lacks a few.
 - Any electrical noise or chemical noise (contamination) in the experimental spectrum might result in erroneous matches, but we are working under the assumption that the signal of the peptide that was selected during MS1 will be stronger than the noise.
@@ -351,7 +351,7 @@ Our score does not take into account isotopic peaks in the theoretical spectrum,
 - First of all, all theoretical spectra consist of only the monoisotopic m/z values.
 - Consequently, all peptide candidates will fail to match to the higher mass isotopic peaks in the theoretical fragment (unless a different y/b ion has the same m/z as a higher order isotopic peak of a different ion). The scores of the peptides will systematically be lower by the same amount, i.e. their ranking will be consistent.
 
-An alternative strategy would be to first de-isotope the experimental spectrum, but this would require accuracte calling of true peaks and can be difficult if there is noise or overlap between the b/y ion series.
+An alternative strategy would be to first de-isotope the experimental spectrum, but this would require accurate calling of true peaks and can be difficult if there is noise or overlap between the b/y ion series.
 
 ### Visualisation of peak matching
 Visually, the following is happening: all black peaks (experimental peaks) that overlap (given a certain error tolerance) with the red peaks (theoretical fragment masses) are counted.
@@ -996,7 +996,7 @@ We have performed a separate search against the decoy and target database, but i
 
 The final step is to search the sequences in the protein database for sub-string matches to the accepted peptides. A list of the UniProtKB/Swiss-Prot identifiers is appended to each PSM.
 
-We have controlled the FDR at the level of the PSM's, but this does not tell us anything about the FDR at the protein-level (Cottrell, 2011). Our approach does not attempt to assign probabilities to the protein assignments (for methods that do, see Teng, Huang & He (2013) and Reiter et al. (2009)), but we do note that we can be more confident in proteins that are infered from multiple peptides. 
+We have controlled the FDR at the level of the PSM's, but this does not tell us anything about the FDR at the protein-level (Cottrell, 2011). Our approach does not attempt to assign probabilities to the protein assignments (for methods that do, see Teng, Huang & He (2013) and Reiter et al. (2009)), but we do note that we can be more confident in proteins that are inferred from multiple peptides. 
 
 
 ```python
