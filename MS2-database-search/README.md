@@ -3,7 +3,7 @@
 
 This python script matches experimental tandem MS spectra (in .dta format) against a peptide and decoy database (.fasta). Based on the spectrum matches, the identity of the protein is inferred.
 
-For the full documentation of this tool, please refer to the interactive Jupyter notebook, the HTML or the Markdown version in the \docs folder.
+For the full documentation of this tool, please refer to the interactive [Jupyter notebook](docs/Documentation.ipynb), the [HTML](docs/Documentation.html) or the [Markdown version](docs/README.md) in the \docs folder.
 
 ## Quick overview
 
