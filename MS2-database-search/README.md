@@ -7,13 +7,13 @@ For the full documentation of this tool, please refer to the interactive [Jupyte
 
 ## Quick overview
 
-First, the precursor mass is used a mass filter to select potential peptide candidates from the target and decoy databases. 
-Next, the experimental peaks are matched against in-silico derived b- and y-ion m/z values derived from the selected peptides, i.e. theoretical to observed spectrum matching.
-Each peptide is given a score reflecting its similarity to the experimental spectrum by simply counting the number of matching peaks and dividing by the total number of experimental peaks.
-The highest scoring peptide is selected for each spectrum as the target/decoy peptide spectrum match (PSM).
-The PSM's are then ranked and p- and q-values will be calculated for each of them.
-Based on the specified FDR cut-off, a list with accepted target PSM's will be returned.
-Finally, the sequences of the selected peptides are searched for in a protein database (.fasta) and the full UniProt entries are retrieved from the web.
+- First, the precursor mass is used as a mass filter to select potential peptide candidates from the target and decoy databases. 
+- Next, the experimental peaks are matched against the in-silico derived b- and y-ion m/z values for all the selected peptides, i.e. theoretical to observed spectrum matching.
+- Each peptide is given a score reflecting its similarity to the experimental spectrum by simply counting the number of matching peaks and dividing by the total number of experimental peaks.
+- The highest scoring peptide is selected for each spectrum as the target/decoy peptide spectrum match (PSM).
+- PSM's are then ranked and p- and q-values will be calculated for each of them.
+- Based on the specified FDR cut-off, a list with accepted target PSM's will be returned.
+- Finally, the sequences of the selected peptides are searched for in a protein database (.fasta) and the full UniProt entries are retrieved from the web.
 
 ## Command line arguments:
 The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files and optionally the MS1 ( '-t1' '--toleranceMS1' ), MS2 mass tolerance ( '-t2' '--toleranceMS2' ) and desired FDR ( '-fdr' '--FDR' ). The default values are 50 ppm, 0.1 Dalton and 5% respectively.
