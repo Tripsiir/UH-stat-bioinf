@@ -3,7 +3,7 @@
 
 This python script matches experimental tandem MS spectra (in .dta format) against a peptide and decoy database (.fasta). Based on the spectrum matches, the identity of the protein is inferred.
 
-For the full documentation of this tool, please refer to the interactive [Jupyter notebook](docs/Documentation.ipynb), the [HTML](docs/Documentation.html) or the [Markdown version](docs/README.md) in the \docs folder.
+For the full documentation of this tool, please refer to the interactive [Jupyter notebook](docs/Documentation.ipynb), the [HTML](docs/Documentation.html) or the [Markdown version](docs/README.md) in the /docs folder.
 
 ## Quick overview
 
@@ -16,10 +16,10 @@ For the full documentation of this tool, please refer to the interactive [Jupyte
 - Finally, the sequences of the selected peptides are searched for in a protein database (.fasta) and the full UniProt entries are retrieved from the web.
 
 ## Command line arguments:
-The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files and optionally the MS1 ( '-t1' '--toleranceMS1' ), MS2 mass tolerance ( '-t2' '--toleranceMS2' ) and desired FDR ( '-fdr' '--FDR' ). The default values are 50 ppm, 0.1 Dalton and 5% respectively.
+The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files ([data/spectra/](data/spectra/)) and optionally the MS1 ( '-t1' '--toleranceMS1' ), MS2 mass tolerance ( '-t2' '--toleranceMS2' ) and desired FDR ( '-fdr' '--FDR' ). The default values are 50 ppm, 0.1 Dalton and 5% respectively.
 
 <pre>
-python main.py path/to/spectraFolder -t1 50 -t2 0.1 -fdr 0.05
+python main.py /data/spectra/ -t1 50 -t2 0.1 -fdr 0.05
 </pre>
 
 Running 'python main.py --help' also provides an overview of the accepted arguments.
