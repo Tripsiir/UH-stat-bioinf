@@ -9,6 +9,8 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
+from bioservices import UniProt
+u = UniProt(verbose=False)
 
 # Check provided arguments
 parser = argparse.ArgumentParser(description='MS2 experimental to database matcher')
@@ -104,7 +106,7 @@ def getPSM(spectrumFile,folderPath,ms1Tolerance,ms2Tolerance):
     decoyPSM['Spectrum'] = spectrumFile
     decoyPSM = decoyPSM.drop('Monoisotopic Mass')
 
-#    # print some output
+#    # print some output - can be turned on or off
 #    print('Peptide matching scores for experimental spectrum ',spectrumFile)
 #    print(peptideCands,'\n')
 #    print('Target PSM: ',targetPSM,'\n')
@@ -218,10 +220,7 @@ def calculateQValues(spectrumScoreDatabase):
         reverseSpectrumScoreDatabase.loc[index,'Q-value'] = FDR
         previousFDR = FDR
 
-#    # Drop decoys from dataframe
-#    reverseSpectrumScoreDatabase = reverseSpectrumScoreDatabase[reverseSpectrumScoreDatabase.Type == 'Target']
-
-    # return again sorted from high to low
+    # return sorted from high to low again
     return reverseSpectrumScoreDatabase.iloc[::-1]
 
 PSM = matchAllSpectra(spectraFilePath)
@@ -265,8 +264,6 @@ def findFDR(spectrumScoreDatabase,desiredFDR=args.desiredFDR):
     targets = spectrumScoreDatabase.loc[spectrumScoreDatabase['Type'] == 'Target']
     scores = spectrumScoreDatabase.Score.sort_values()
 
-#    if not desiredFDR:
-#    desiredFDR = float(input('Please specify the desired FDR (blank defaults to 0.05): ') or args.desiredFDR)
     FDR = 100
     for potentialCutOff in scores:
         FDR = (decoys.Score >= potentialCutOff).sum()/ (targets.Score >= potentialCutOff).sum()
@@ -309,16 +306,12 @@ def retrieveProteins(spectrumScoreDatabase):
     spectrumScoreDatabase.loc[:,'Inferred Proteins'] = spectrumScoreDatabase.apply(lambda row: proteinData.loc[proteinData.Sequence.str.contains(row['Sequence'])].Identifier.tolist() ,axis=1)
     return spectrumScoreDatabase
 
-print('\n Finding protein identifiers associated with the matched peptides...\n')
+print('\nFinding protein identifiers associated with the matched peptides...\n')
 PSM = retrieveProteins(PSM)
 print(PSM)
 input("\n\nPress Enter to continue...")
 
-
-print('\n Looking up identifiers on UniProt...\n')
-
-from bioservices import UniProt
-u = UniProt(verbose=False)
+print('\nLooking up identifiers on UniProt...\n')
 
 all_identifiers = []
 for index, identifierlist in PSM['Inferred Proteins'].iteritems():
