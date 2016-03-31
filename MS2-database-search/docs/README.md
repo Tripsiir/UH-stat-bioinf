@@ -10,15 +10,15 @@ This tool implements a simple version of tandem mass spectrometry (MS2 or MS/MS)
 
 # Using the software
 
-The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files and optionally the MS1 ( '-t1' '--toleranceMS1' ), MS2 mass tolerance ( '-t2' '--toleranceMS2' ) and desired FDR ( '-fdr' '--FDR' ). The default values are 50 ppm, 0.1 Dalton and 5% respectively.
+The package can be run via the command line by calling 'python main.py' followed by the absolute path to a folder containing the experimental spectrum .dta files (here: /data/spectra/) and optionally the MS1 ( '-t1' '--toleranceMS1' ), MS2 mass tolerance ( '-t2' '--toleranceMS2' ) and desired FDR ( '-fdr' '--FDR' ). The default values are 50 ppm, 0.1 Dalton and 5% respectively. 
 
 <pre>
-python main.py path/to/spectraFolder -t1 50 -t2 0.1 -fdr 0.05
+python main.py /data/spectra/ -t1 50 -t2 0.1 -fdr 0.05
 </pre>
 
 Running 'python main.py --help' also provides an overview of the accepted arguments.
 
-To save the output, simply use a '>' command in the command line to specify the desired .txt file to store the results in.
+To save the output, simply use a '>' command in the command line to specify the desired .txt file to store the results in. Note that due to the tool normally waiting on user input, the user will need to press return a number of times on the blank console screen to fully generate all the output.
 
 ## Dependencies
 
