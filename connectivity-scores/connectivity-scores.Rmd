@@ -681,7 +681,7 @@ For the between-cluster connectivity we will use a certain cluster as a referenc
 
 As a demonstration, consider the seventh cluster based on the fingerprints. We chose this cluster because it had a relatively high within-cluster connectivity for the first factor, i.e. the compounds share a (local) pattern in their expression matrix.
 
-```{r between_finger_demo}
+```{r between_finger_demo_cluster7}
 refMat <- geneMat[,cut.cluster.fingerprintMat==7]
 querMat <- geneMat[,cut.cluster.fingerprintMat!=7]
 colnames(refMat)
@@ -702,20 +702,20 @@ The loadings for the queries, per cluster, for the first component are:
 ```{r between_finger_demo_loadings}
 sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),])
 
-CSanalysis(refMat,querMat,"CSmfa",factor.plot=1,which=c(5),
+loadings <- CSanalysis(refMat,querMat,"CSmfa",factor.plot=1,which=c(5),
                     result.available=betw.finger.factor1.demo,plot.type='sweave')
 ```
 
 When we look at the averaged absolute values per cluster, for the first component, it seems that the third cluster is most similar to the reference cluster 7.
 
-```{r between_finger_demo_loadings_average}
+```{r between_finger_demo_loadings_averages}
 sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(x) mean(abs(x)))
 ```
 
 The genes that have the highest factor scores for the first component are GDF15, DDIT4 and MSMO1.
 
 ```{r}
-CSanalysis(refMat,querMat,"CSmfa",factor.plot=1,which=c(4),
+genes<-CSanalysis(refMat,querMat,"CSmfa",factor.plot=1,which=c(4),
                     result.available=betw.finger.factor1.demo,plot.type='sweave')
 ```
 
@@ -731,7 +731,7 @@ sapply(n.cluster.fingerprint, function(y) betw.finger.factor2.demo@CS$CS.query[c
 ```{r between_finger_demo_loadings_pc2_average}
 sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor2.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(x) mean(abs(x)))
 
-CSanalysis(refMat,querMat,"CSmfa",factor.plot=2,which=c(4),
+genes<-CSanalysis(refMat,querMat,"CSmfa",factor.plot=2,which=c(4),
                     result.available=betw.finger.factor2.demo,plot.type='sweave')
 ```
 
@@ -752,21 +752,25 @@ for (i in 1:length(connectivity.fingerprint.betw)) { # loop through clusters
 proc.time() - ptm
 ```
 
-We will focus on 
+We will focus on clusters 3 and 7 for the first component, because these showed the highest average within-cluster connectivity.
 
-We plot the figures for each cluster-reference set:
+Note: cluster 5 and 6 show interesting sub-clusters still... 
 
 ```{r}
 plot_MFA_fingerprint_between = function(cluster,factor){
   # Plots result for already calculated MFA objects
   mfa <- CSanalysis(connectivity.fingerprint.betw[[cluster]][['refMat']],
                     connectivity.fingerprint.betw[[cluster]][['querMat']],
-                    "CSmfa",factor.plot=factor,which=c(2,3),
+                    "CSmfa",factor.plot=factor,which=c(2,3,4),
                     result.available=connectivity.fingerprint.betw[[cluster]][['MFA']],
                     plot.type='sweave')
   return(mfa)
 }
-for (i in 1:length(n.cluster.fingerprint)){
+# for (i in 1:length(n.cluster.fingerprint)){
+#   print(paste('Reference cluster is',i))
+#   plot_MFA_fingerprint_between(i,1)
+# }
+for (i in c(3,7)) {
   print(paste('Reference cluster is',i))
   plot_MFA_fingerprint_between(i,1)
 }
@@ -777,7 +781,17 @@ for (i in 1:length(n.cluster.fingerprint)){
 The average connectivity between clusters based on the first component is (per cluster):
 
 ```{r}
-sapply(n.cluster.fingerprint, function(x) sapply(sapply(n.cluster.fingerprint, function(y) connectivity.fingerprint.betw[[x]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(z) mean(abs(z))))
+# inner sapply y retrieves query loadings per cluster
+# middle sapply z takes average of these per cluster
+# outer ssaply does this ones for each cluster as a reference set
+sapply(n.cluster.fingerprint, function(x) 
+  sapply(
+    sapply(n.cluster.fingerprint, function(y)
+    connectivity.fingerprint.betw[[x]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),
+    function(z) mean(abs(z))))
+
+# columns indicate reference cluster
+# rows are average query loadings
 ```
 
 And based on the second component:
