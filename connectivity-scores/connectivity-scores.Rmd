@@ -610,9 +610,25 @@ for (j in rownames(targetMat)[cut.cluster.targetMat==1,drop=F]){
 }
 ```
 
+```{r, warning=F}
+for (j in rownames(targetMat)[cut.cluster.targetMat==3,drop=F]){
+  print(paste('Query compound is',j))
+  print(mean(abs(redo_MFA_target_within(3,j,2)@CS$CS.query$Factor2)))
+}
+mean(abs(redo_MFA_target_within(3,j,2)@CS$CS.query$Factor2))
+
+# cluster 3 has a relatively low within-connectivity score for the second factor
+# but is much larger when considering the set as a whole!
+mean(abs(CSanalysis(connectivity.target.betw[[3]][['refMat']],
+                    connectivity.target.betw[[3]][['querMat']],
+                    "CSmfa",factor.plot=2,which=c(2,3),
+                    result.available=connectivity.target.betw[[3]][['MFA']],
+                    plot.type='sweave')@CS$CS.ref$Factor2))
+```
+
 #### Visualisation
 
-The following plots attempt to visualise the patterns for the third cluster based on target predictions. As we saw, the average connectivity based on the first component was quite large for this cluster. This means that all the compounds in this cluster likely induce a similar gene expression. This can be seen from the fact that the left-out cluster always has a relatively high loading compared to the references. The only deviating compounds aer verapamil and amitriptyline.
+The following plots attempt to visualise the patterns for the third cluster based on target predictions. As we saw, the average connectivity based on the first component was quite large for this cluster. This means that all the compounds in this cluster likely induce a similar gene expression. This can be seen from the fact that the left-out cluster always has a relatively high loading compared to the references. The only deviating compounds are verapamil and amitriptyline.
 
 ```{r, results='hide',include=T}
 # nam <- rownames(targetMat)[cut.cluster.targetMat==3,drop=F]
@@ -627,6 +643,7 @@ The following plots attempt to visualise the patterns for the third cluster base
 
 library(scales)
 library(ggplot2)
+library(ggrepel)
 compound.names <- rownames(targetMat[cut.cluster.targetMat==3,,drop=F])
 for (i in 1:length(compound.names)){
   mfa <- CSanalysis(connectivity.target[[3]][[i]][['refMat']],
@@ -638,13 +655,18 @@ for (i in 1:length(compound.names)){
   
   print(ggplot(mfa@CS$CS.query,aes(x=seq_along(Factor1),y=Factor1,
                              label=rownames(mfa@CS$CS.query))) +
-  geom_point(aes(colour=colour.factor)) + 
-  geom_text(vjust="inward",hjust="inward",#nudge_y = -0.01,
-            aes(colour=colour.factor),show.legend = F) +
-  scale_colour_discrete(name=NULL,labels=c('Reference compound','Leave-one-out compound')) +
+  # geom_point(aes(fill=colour.factor),colour='black',pch=21,size=5) +
+  geom_point(aes(colour=colour.factor),size=5) +
+  geom_point(colour = "black",shape=1,size=5) +
+  # geom_text(vjust="inward",hjust="inward",#nudge_y = -0.01,
+            # aes(colour=colour.factor),show.legend = F) +
+  geom_text_repel(aes(colour=colour.factor),show.legend = F,box.padding = unit(0.8, "lines"))+
+  # scale_colour_discrete(name=NULL,labels=c('Reference compound','Leave-one-out compound')) +
+  scale_colour_brewer(name=NULL,palette='Set1',
+                      labels=c('Reference compound','Leave-one-out compound')) +
   scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") + 
   scale_y_continuous(name="Compound Loadings - Factor 1") +
-  ggtitle(paste("Cluster",3,"- Left out compound",compound.names[i])))
+  ggtitle(paste("Cluster",3,"- Left out compound",compound.names[i])) + theme_bw() )
 }
 
 ```
@@ -663,13 +685,14 @@ for (i in 1:length(compound.names)){
   
   print(ggplot(mfa@CS$CS.query,aes(x=seq_along(Factor2),y=Factor2,
                              label=rownames(mfa@CS$CS.query))) +
-  geom_point(aes(colour=colour.factor)) + 
-  geom_text(vjust="inward",hjust="inward",#nudge_y = -0.01,
-            aes(colour=colour.factor),show.legend = F) +
-  scale_colour_discrete(name=NULL,labels=c('Reference compound','Leave-one-out compound')) +
+  geom_point(aes(colour=colour.factor),size=5) +
+  geom_point(colour = "black",shape=1,size=5) +
+  geom_text_repel(aes(colour=colour.factor),show.legend = F,box.padding = unit(0.8, "lines")) +
+  scale_colour_brewer(name=NULL,palette='Set1',
+                      labels=c('Reference compound','Leave-one-out compound'))+
   scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") + 
   scale_y_continuous(name="Compound Loadings - Factor 2") +
-  ggtitle(paste("Cluster",1,"- Left out compound",compound.names[i])))
+  ggtitle(paste("Cluster",2,"- Left out compound",compound.names[i]))+ theme_bw())
 }
 ```
 
@@ -855,42 +878,6 @@ The average connectivity between clusters based on the first component is (per c
 # columns indicate reference cluster
 # rows indicate comparison cluster for that reference
 sapply(n.cluster.target, function(x) sapply(sapply(n.cluster.target, function(y) connectivity.target.betw[[x]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.targetMat==y]),]),function(z) mean(abs(z))))
-
-# the outer sapply loops through cluster numbers x
-# i.e. a different reference cluster each time
-
-# inner sapply loops through cluster numbers y, for a given cluster z
-# and extracts the loadings for each of the query clusters y into separate lists (NA for cluster x)
-# i.e. 7 lists in total
-str(sapply(n.cluster.target, function(y) connectivity.target.betw[[3]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.targetMat==y]),]))
-
-# next level of sapply takes the mean absolute value of each list
-# by looping through each list z of the inner sapply
-# i.e. 7 averages
-str(sapply(sapply(n.cluster.target, function(y) connectivity.target.betw[[3]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.targetMat==y]),]),function(z) mean(abs(z))))
-
-
-
-
-
-sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(x) mean(abs(x)))
-
-
-
-connectivity.target.betw[[3]][['MFA']]@CS$CS.query
-colnames(geneMat[,cut.cluster.targetMat==3])
-
-str(sapply(n.cluster.target, function(y) connectivity.target.betw[[3]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.targetMat==y]),]))
-
-sum(sapply(sapply(n.cluster.target, function(y) connectivity.target.betw[[3]][['MFA']]@CS$CS.query[colnames(geneMat[,cut.cluster.targetMat==y]),]),function(y) length(y)))
-
-str(connectivity.target.betw[[3]][['MFA']]@CS$CS.query)
-
-mean(abs(connectivity.target.betw[[3]][['MFA']]@CS$CS.query[,1]))
-
-# No need to loop through clusters a second time, since CS.query only contains loadings for the other (=query) clusters
-# Just loop through outer clusters and retrieve all queries?
-
 ```
 
 And based on the second component:
@@ -910,6 +897,32 @@ betw.avg.connectivity.target.pc2 <- sapply(n.cluster.target, function(x) sapply(
 ```
 ```{r}
 betw.avg.connectivity.target.pc2
+```
+
+### Visualisation of between-cluster connectivity
+```{r,warning=F,results='hide'}
+mfa <- CSanalysis(connectivity.target.betw[[3]][['refMat']],
+                    connectivity.target.betw[[3]][['querMat']],
+                    "CSmfa",factor.plot=1,which=c(),
+                    result.available=connectivity.target.betw[[3]][['MFA']],
+                    plot.type='sweave')
+df <- mfa@CS$CS.query
+df$clusters <- as.factor(cut.cluster.targetMat[!cut.cluster.targetMat==3])
+df <- df[order(df$clusters),]
+df.ref <- mfa@CS$CS.ref
+df.ref$clusters <- as.factor(3)
+df <- rbind(df.ref,df)
+
+ggplot(df,aes(x=seq_along(Factor1),y=Factor1,
+                           label=rownames(df))) +
+geom_point(aes(colour=clusters),size=6) +
+geom_point(colour = "black",shape=1,size=6) +
+geom_text_repel(aes(colour=clusters),show.legend = F,box.padding = unit(0.5, "lines"))+
+scale_colour_brewer(name='Clusters',palette='Set1',
+                    labels=levels(df$clusters)) +
+scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") + 
+scale_y_continuous(name="Compound Loadings - Factor 1") +
+ggtitle(paste("Reference cluster 3")) + theme_bw()
 ```
 
 <!-- ```{r} -->

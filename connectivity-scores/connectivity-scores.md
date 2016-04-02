@@ -1364,6 +1364,15 @@ The following plots attempt to visualise the patterns for the third cluster base
 
 library(scales)
 library(ggplot2)
+library(ggrepel)
+```
+
+```
+## Warning: package 'ggrepel' was built under R version 3.2.4
+```
+
+```r
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 compound.names <- rownames(targetMat[cut.cluster.targetMat==3,,drop=F])
 for (i in 1:length(compound.names)){
   mfa <- CSanalysis(connectivity.target[[3]][[i]][['refMat']],
@@ -1375,13 +1384,18 @@ for (i in 1:length(compound.names)){
   
   print(ggplot(mfa@CS$CS.query,aes(x=seq_along(Factor1),y=Factor1,
                              label=rownames(mfa@CS$CS.query))) +
-  geom_point(aes(colour=colour.factor)) + 
-  geom_text(vjust="inward",hjust="inward",#nudge_y = -0.01,
-            aes(colour=colour.factor),show.legend = F) +
-  scale_colour_discrete(name=NULL,labels=c('Reference compound','Leave-one-out compound')) +
+  # geom_point(aes(fill=colour.factor),colour='black',pch=21,size=5) +
+  geom_point(aes(colour=colour.factor),size=5) +
+  geom_point(colour = "black",shape=1,size=5) +
+  # geom_text(vjust="inward",hjust="inward",#nudge_y = -0.01,
+            # aes(colour=colour.factor),show.legend = F) +
+  geom_text_repel(aes(colour=colour.factor),show.legend = F,box.padding = unit(0.8, "lines"))+
+  # scale_colour_discrete(name=NULL,labels=c('Reference compound','Leave-one-out compound')) +
+  scale_colour_brewer(name=NULL,palette='Set1',
+                      labels=c('Reference compound','Leave-one-out compound')) +
   scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") + 
   scale_y_continuous(name="Compound Loadings - Factor 1") +
-  ggtitle(paste("Cluster",3,"- Left out compound",compound.names[i])))
+  ggtitle(paste("Cluster",3,"- Left out compound",compound.names[i])) + theme_bw() )
 }
 ```
 
@@ -1402,13 +1416,14 @@ for (i in 1:length(compound.names)){
   
   print(ggplot(mfa@CS$CS.query,aes(x=seq_along(Factor2),y=Factor2,
                              label=rownames(mfa@CS$CS.query))) +
-  geom_point(aes(colour=colour.factor)) + 
-  geom_text(vjust="inward",hjust="inward",#nudge_y = -0.01,
-            aes(colour=colour.factor),show.legend = F) +
-  scale_colour_discrete(name=NULL,labels=c('Reference compound','Leave-one-out compound')) +
+  geom_point(aes(colour=colour.factor),size=5) +
+  geom_point(colour = "black",shape=1,size=5) +
+  geom_text_repel(aes(colour=colour.factor),show.legend = F,box.padding = unit(0.8, "lines")) +
+  scale_colour_brewer(name=NULL,palette='Set1',
+                      labels=c('Reference compound','Leave-one-out compound'))+
   scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") + 
   scale_y_continuous(name="Compound Loadings - Factor 2") +
-  ggtitle(paste("Cluster",1,"- Left out compound",compound.names[i])))
+  ggtitle(paste("Cluster",2,"- Left out compound",compound.names[i]))+ theme_bw())
 }
 ```
 
