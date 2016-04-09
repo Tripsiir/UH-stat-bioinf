@@ -1,0 +1,609 @@
+\documentclass[a4paper,10pt]{article} 
+\usepackage[top=1in, bottom=1.25in, left=1.25in, right=1.25in]{geometry}
+\usepackage[hyperref=true,backend=bibtex,citestyle=authoryear,isbn=false]{biblatex}
+\addbibresource{biblio.bib}
+\usepackage{hyperref}
+\usepackage[font=small,labelfont=bf]{caption} 	% sets font for image and table captions
+\usepackage{float}
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+\usepackage[stretch=10]{microtype}
+\usepackage{booktabs}
+
+\begin{document}
+
+\begin{titlepage}
+	\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
+	\centering % Center everything on the page
+		\textsc{\LARGE UHasselt}\\[1.5cm] % Name of your university/college
+	\textsc{\Large 2nd Master Bioinformatics}\\[0.5cm] % Major heading such as course name
+	\textsc{\large Advanced Methods for Genomics}\\[0.5cm] % Minor heading such as course title
+	\HRule \\[0.4cm]
+	{ \huge \bfseries Differential Expression Analysis for RNA Sequencing}\\[0.4cm] % Title of your document
+	\HRule \\[1.5cm]
+	\begin{minipage}{0.4\textwidth}
+		\begin{flushleft} \large
+			\emph{Author:}\\
+			Pieter Moris % Your name
+		\end{flushleft}
+	\end{minipage}
+	~
+	\begin{minipage}{0.4\textwidth}
+		\begin{flushright} \large
+			\emph{Supervisor:} \\
+			Dr. Jurgen Claesen % Supervisor's Name
+		\end{flushright}
+	\end{minipage}\\[2cm]
+	{\large 1 April 2016}\\[2cm] % Date, change the \today to a set date if you want to be precise
+	\includegraphics[width=0.3\linewidth]{logo.jpg}\\[1cm] 
+	\vfill % Fill the rest of the page with whitespace
+\end{titlepage}
+
+\pagenumbering{roman} % starts roman page numbering
+\tableofcontents
+\pagebreak
+\clearpage
+\pagenumbering{arabic}
+
+<<setup, include=FALSE, cache=FALSE, echo=FALSE>>=
+knitr::opts_chunk$set(fig.path='figures/plots-',fig.align='center', fig.show='hold', eval=TRUE,
+                      echo=FALSE,cache=T,error=T, dev='pdf')
+# options(width=50)
+Sys.setenv(TEXINPUTS=getwd(),
+           BIBINPUTS=getwd(),
+           BSTINPUTS=getwd())
+set.seed(718453)
+@
+
+\section{Introduction}
+The search for genes that are differentially expressed between different conditions (gene expression profiling) plays a key role in elucidating the underlying molecular mechanisms of diseases, treatments or biological variation in general. Traditionally micro-arrays were the most prominent tool to conduct these transcriptome analyses, but due to advances in next-generation sequencing methods, RNA-sequencing has emerged as an alternative \autocite{soneson_comparison_2013}. Rather than comparing samples to a pre-specified, known library of gene probes, RNA-seq tries to sequence all the mRNA transcripts that are present in a specific tissue (or even cell) at a certain time point. First, the mRNA is isolated from the sample and reverse transcribed into cDNA. Then, next-generation sequencing is used to generate millions of short reads, which are then mapped to a reference genome. In the end, the total number of reads that map to each specific gene (or other genomic region of interest, e.g. exons) is used as a proxy for the expression level. Many different methods have been proposed to analyse these counts and they differ in various aspects, such as their strategies for normalisation and significance testing \autocite{oshlack_rnaseq_2010}.
+
+In this report we compare four different approaches for the analysis of differential expression for RNA-seq: a parametric, a non-parametric, a transformation and a Bayesian method. These methods will be described in more detail in the methodology section of this report. We will analyse a dataset with gene counts for six samples, three of which are controls, while the other three were obtained from patients who received a novel treatment for squamous cell carcinoma, a form of skin cancer.
+
+Note that the starting point of this study is already a dataset with gene counts, ready for differential expression analysis. All of the earlier steps of the RNA-seq workflow, i.e. library construction, base-calling, mapping of the reads and conversion to gene counts, were already performed. However, we have to keep in mind that each of those steps came with its own set of potential pitfalls and that all our down-stream analyses will depend on the validity of the earlier methods. For example, we do not know for sure how non-unique reads were dealt with (discarded, counted for each possible gene, etc.) and this can, at least in theory, have a large effect on the final gene counts \autocite{oshlack_rnaseq_2010}. Another issue that can occur during the mapping phase is the difficulty in mapping reads that span exon junctions: using a genomic reference will tend to give greater coverage of transcripts with fewer exon junctions (at the same expression levels), but this can be dealt with in multiple ways, each with their own benefits and drawbacks.
+
+Lastly, we are only interested in the performance of these methods to detect differential expression between samples. We will not perform any follow-up analyses, such as gene ontology or enrichment analyses.
+
+\section{Methodology}
+\subsection{Parametric approach -  edgeR and the negative binomial model}
+The first method we employed was the parametric approach of the edgeR package by \textcite{robinson_edger_2010}. There are two important concepts to discuss: normalisation of the count data and testing for differentially expressed genes. Since these aspects will also be important for the other methods, we will devote more time to them here the first time.
+
+normalisation is necessary to compensate for biases and to allow for accurate comparisons. There are a number of biases inherent to the next-generation sequencing methods used for RNA-seq. For example, coverage is not uniform across the genome (e.g. due to GC-bias) and mapping of reads is positively correlated with gene length \autocite{soneson_comparison_2013}. Fortunately, these within-sample biases can be ignored in the case of differential experiments, because we can assume that they affect all samples in the same manner and will cancel out \autocite{chen_edger_2015}. In other words, only relative changes between samples are of interest, not the absolute quantification of expression levels between genes within a sample.
+
+Between-sample biases on the other hand do need to be accounted for. The most important one is probably the sequencing depth or library size, which differs between samples. A larger library size inherently leads to higher gene counts at the same expression level, so it makes intuitive sense to scale the counts according to the library size \autocite{soneson_comparison_2013}. However, this does not yet account for the RNA composition effect; very high expression of a small number of genes can lead to under-sampling of the other genes and give the false impression of down-regulation \autocite{chen_edger_2015}. EdgeR uses a model-based normalisation, the TMM normalisation (trimmed mean of M-values), which assumes that most genes are in fact not differentially expressed and consequently should have similar counts. The raw data is used to estimate scaling factors that minimize the log-fold changes between samples for most genes \autocite{robinson_scaling_2010}. The product of the library sizes and the scaling factors is the effective library size that will be used in the next steps of the analysis. An advantage of the scaling factor method is that it preserves the raw counts and as such can be used for count-based parametric models \autocite{oshlack_rnaseq_2010}. Moreover, it has been shown to perform adequately on simulation data compared to other methods such as RPKM (reads per kilobase per million mapped reads) normalisation \autocite{dillies_comprehensive_2013}.
+
+%and shows less bias than for example quantile-based normalisation like RPKM (reads per kilobase per million mapped reads) \autocite{bullard_evaluation_2010}. 
+% rpkm does correct for gene length, but not required for DE 
+% http://bib.oxfordjournals.org/content/early/2012/09/15/bib.bbs046.long
+% Based on three real mRNA and one miRNA-seq datasets, we confirm previous observations that RPKM and TC, both of which are still widely in use [40, 41], are ineffective and should be definitively abandoned in the context of differential analysis.  gene length
+Prior to the normalisation, we filtered out genes with a count per million lower than one and which were expressed in fewer than three samples (because there are three replicates per condition). This cut-off is ad-hoc, but recommended by \textcite{chen_edger_2015} since transcripts need to reach a certain level of abundance before they are translated into proteins with a meaningful biological effect.
+
+For the differential expression test, edgeR fits a negative binomial (NB) model to the count data (since we are dealing with a discrete distribution). This is appropriate for biological replicates, since here the variance is often higher than expected under the assumptions of a more simple Poisson model \autocite{robinson_edger_2010}. The NB model has two parameters that need to be estimated, the mean and the dispersion, the latter of which can allow for overdispersion (unlike the simpler Poisson model). The dispersion is first estimated as a common dispersion factor, which assumes that all genes have the same mean-variance relation. Since we have a simple one factor experiment, this can be achieved with the quantile-adjusted conditional maximum likelihood (qCML) method \autocite{robinson_edger_2010}. This method naturally lends itself to RNA-seq because it performs best when there are many small samples (genes) with a common dispersion \autocite{robinson_smallsample_2008}. Then, this estimate is improved by using an empirical Bayes method to shrink unique dispersion estimates of each gene (tagwise dispersions) to the common dispersion \autocite{robinson_moderated_2007}. Intuitively this can be thought of as borrowing information between genes to estimate the variance more accurately \autocite{robinson_edger_2010}. This gives a more accurate estimation of the genewise dispersion parameters, which is otherwise difficult to achieve due to small samples sizes \autocite{soneson_comparison_2013}. The amount of shrinkage is based on the dispersion trend (a prior weight) \autocite{Chen2014}. Note that for more complex experiments there exists an extension of this framework, which is based on generalized linear models, but the overall idea is the same.
+
+After estimating the gene-specific biological variation and fitting the NB model, we can test for differential expression using the exact test for the negative binomial distribution (for experiments with a single factor) which directly calculates p-values \autocite{chen_edger_2015,robinson_smallsample_2008}. This test bears some resemblance to Fisher's exact test. It is a pairwise testing procedure, but since we only have two groups, this is not an issue. We opted for the deviance goodness-of-fit statistic to define the rejection region (the conditional likelihood ratio test), which has good theoretical properties but is slightly slower, compared to the alternative options. We used the Benjamini-Hochberg false discovery rate (FDR) to protect against false positives after multiple testing; a 5\% FDR corresponds to fewer than 5\% false positives among all rejected hypotheses.
+
+Finally, edgeR also offers an exploratory method to visualise the differences between the samples, namely a multi-dimensional scaling plot. This is an unsupervised clustering approach where the log-fold change (i.e. the differences in expression) between each pair of samples is used as the distance measure \autocite{chen_edger_2015}. 
+
+\subsection{Non-parametric approach - SAMSeq}
+For our non-parametric approach, we settled on SAMSeq, which uses Wilcoxon ranks and resampling to account for differences in sequencing depth \autocite{li_finding_2013}. Unlike the previous parametric approach, this rank-based strategy does not impose any distributional assumptions on the data. This is an advantage since parametric methods might break down when there is too much deviation from the proposed assumptions. Moreover, this method is also easier extended to more complex outcomes, such as survival, because the underlying models are less complex and not bound to a distribution.
+
+For our two-group experiment the Wilcoxon rank statistic is first computed for each gene. Then, Poisson re-sampling is used, repeatedly, to account for differences in sequencing depth (the reason for which is the same as before). Note that due to this resampling strategy, no prior normalisation is required. Repeated re-sampling is required to increase the power of the Wilcoxon statistic and to alleviate the risks of missing data due to the random sampling process.
+
+Subsequently, a permutation method computes the FDR cut-off value for the obtained test statistics; permutations of the original data are generated to approximate the null distribution of the test statistic. Lastly, a q-value is reported for each gene, which reports significance in terms of the FDR \autocite{storey_statistical_2003}.
+
+Unfortunately, this method is known to have poor power when there are fewer than five replicate samples per condition \autocite{soneson_comparison_2013,seyednasrollah_comparison_2015}.
+
+We performed the SAMSeq analysis using both a 5\% FDR and the default 20\% FDR setting, on both the filtered and unfiltered dataset (see previous section). The number of permutations for the FDR estimation was set to 500 and the number of resamples to construct the test statistic was 100.
+
+\subsection{Transformation approach - voom and limma}
+Transformation-based methods aim to transform the gene counts in such a way that they become appropriate for the traditional differential expression tests employed for microarray analyses (which have log normally distributed outcomes) \autocite{soneson_comparison_2013}. The voom method (variance modeling at the observational level) implemented in the limma package \autocite{ritchie_limma_2015,law_voom_2014} achieves this by converting the counts to the log-scale (log counts per million) and then estimating the mean-variance relationship empirically. Based on the mean-variance relation, weights are computed for each observation and fed into the standard linear models and empirical bayes methods of limma. Once again the idea is to borrow information between genes to estimate the gene-specific variation more accurately, despite small sample sizes (like in the empirical Bayes methods in edgeR). In a sense it is an extension of the familiar t-test, but the standard errors are adjusted. 
+
+As is recommended by the authors of the method, we again first normalised the gene counts using the TMM method, as implemented by edgeR, to account for varying library sizes \autocite{smyth_limma_2015}. We operated on the filtered dataset and the FDR was kept at 5\% once again.
+
+\subsection{Bayesian approach - EBSeq}
+Lastly, we used a Bayesian approach, namely EBSeq \autocite{leng_ebseq_2013}. This method has some similarities to the parametric edgeR method described above, in the sense that both rely on an underlying negative binomial model. The difference lies in the statistical inference, which is entirely Bayesian for EBSeq. A Bayesian method is employed to calculate the posterior probabilities of differential expression between the two conditions, whilst using a negative binomial model as a prior. In the end, a Bayesian FDR is supplied.
+
+Once again we worked with the filtered dataset. For normalisation we used the median normalisation (based on DESeq) as was recommended by the authors of the method \autocite{leng_ebseq_2015}. Similar to the TMM normalisation, this results in size factors that correct for the differences in library size. The number of iterations was evaluated and seven seemed to result in convergence since the parameter estimates no longer changed substantially after this point.
+
+\section{Results}
+\subsection{Parametric - EdgeR results}
+<<edgeR-filter, include=FALSE, cache=TRUE, echo=FALSE>>=
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("edgeR")
+library(readxl)
+DEdata <- read_excel("dataset.xlsx")
+DEdata <- DEdata[,-1]
+groupLabels <- c(rep('placebo',3),rep('treatment',3))
+
+#################################################
+# edgeR
+#################################################
+
+library(edgeR)
+DEcounts <- DGEList(counts=DEdata,group=factor(groupLabels))
+DEcounts.original <- DEcounts
+# filtering relative to library size
+keep <- rowSums(cpm(DEcounts)>1) >= 3 # 1 read per million for at least 3 samples
+DEcounts <- DEcounts[keep, , keep.lib.sizes=FALSE]
+DEcounts$samples$lib.size <- colSums(DEcounts$counts) # recompute library sizes
+
+# How many tags were removed?
+ntags.filtered <- dim(DEcounts)[1]
+ntags.original <- dim(DEcounts.original)[1]
+@
+
+<<edgeR-normalisation, include=FALSE, cache=TRUE, echo=FALSE>>=
+# trimmed mean of M-values (TMM) normalisation for sample specific-effects - MODEL BASED not a transformation!
+DEcounts <- calcNormFactors(DEcounts,method ="TMM")
+
+# smear plot before and after correction
+par(mfrow = c(1, 2))
+maPlot(DEcounts$counts[, 1], DEcounts$counts[, 4], 
+       normalise = TRUE, pch = 19,
+       cex = 0.4, ylim = c(-8, 8))
+grid(col = "blue")
+abline(h = log2(DEcounts$samples$norm.factors[2]/
+                  DEcounts$samples$norm.factors[1]),
+       col = "red", lwd = 4)
+eff.libsize <- DEcounts$samples$lib.size * 
+  DEcounts$samples$norm.factors
+maPlot(DEcounts$counts[, 1]/eff.libsize[1], DEcounts$counts[, 2]/
+         eff.libsize[2],
+       normalise = FALSE, pch = 19, cex = 0.4, ylim = c(-8, 8))
+grid(col = "blue")
+par(mfrow = c(1, 1))
+@
+
+Despite our reasonably mild choices, the filtering step reduced the number of tags almost by half (\Sexpr{ntags.original} v.s. \Sexpr{ntags.filtered}). The exploratory multi-dimensional scaling plot that projects the similarity of the samples into a two-dimensional scatter plot is provided in figure \ref{edgeR-mds}.
+
+\begin{figure}[H]
+  \centering
+<<edgeR-exploration, include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=4.5, fig.height=3>>=
+plotMDS(DEcounts, col=as.numeric(DEcounts$samples$group),pch=19)
+legend("bottomleft", as.character(unique(DEcounts$samples$group)),
+       col=1:2,pch=19)
+@
+\caption{Multi-dimensional scaling plot visualising the distance (log-fold expression) between the samples.}
+\label{edgeR-mds}
+\end{figure}
+
+<<edgeR-dispersion, include=FALSE, cache=TRUE, echo=FALSE>>=
+# Negative Binomial model
+DEcounts <- estimateDisp(DEcounts)
+@
+
+The estimation of the common and gene-specific dispersion factors is shown in figure \ref{edgeR-dispersion}. Note that the biological coefficient of variation is plotted, rather than the actual dispersion. 
+
+% A mean variance plot is also provided in figure \ref{edgeR-ma}, which contrasts the raw, common, genewise and Poisson ($\mu = \sigma^2$) variances of the counts (code adapted from \textcite{ruddy_edger_2011}.
+
+\begin{figure}[H]
+  \centering
+<<edgeR-dispersion-plot, include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=4.5, fig.height=3>>=
+plotBCV(DEcounts) # dispersion estimation
+@
+\caption{Plot of the biological coefficient of variations (or the square root of the dispersion parameter of the NB model) for the common and tagwise method (trended method not relevant here). CPM = counts per million.}
+\label{edgeR-dispersion}
+\end{figure}
+%' 
+%' \begin{figure}[H]
+%'   \centering
+%' <<edgeR-dispersion-ma-plot, include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=6, fig.height=3.5,warning=F>>=
+%' # code adapted from https://cgrlucb.wikispaces.com/file/view/edgeR_Tutorial.pdf
+%' plotMeanVar( DEcounts , show.raw.vars=TRUE ,
+%' show.tagwise.vars=TRUE ,
+%' show.binned.common.disp.vars=FALSE ,
+%' show.ave.raw.vars=FALSE ,
+%' dispersion.method = "qcml" , NBline = TRUE ,
+%' nbins = 100 ,
+%' pch = 16 ,
+%' xlab ="Mean Expression (Log10 Scale)" ,
+%' ylab = "Variance (Log10 Scale)" ,
+%' main = "Mean-Variance Plot" )
+%' @
+%' \caption{Mean-variance plot contrasting the raw, common, genewise and Poisson variances of the counts.}
+%' \label{edgeR-ma}
+%' \end{figure}
+
+<<edgeR-exacttest, include=F, cache=TRUE, echo=FALSE>>=
+et <- exactTest(DEcounts,dispersion = "tagwise",rejection.region = "deviance")
+# deviance slightly less conservative, conditional likelihood ratio test
+edge.top <- topTags(et,n=10,adjust.method = "BH") #  false discovery rate, 
+# = the expected proportion of false discoveries amongst the rejected hypotheses
+library(xtable)
+toptable <- as.data.frame(edge.top[,-2])
+toptable <- cbind(rownames(toptable),toptable)
+colnames(toptable)[1] <- "Genes"
+tab <- xtable(toptable,booktabs=T,
+              caption=paste("Top ten differentially expressed genes
+                            based on the edgeR exact test."),
+              label="edgeR-top")
+print(tab,caption.placement = "top",table.placement = "H",include.rownames=F)
+
+# # Show counts for top 10 genes
+# o <- order(et$table$PValue)
+# cpm(DEcounts)[o[1:10],]
+
+# total number of differentially expressed genes at FDR 5%
+sign.genes.edger <- summary(de <- decideTestsDGE(et, adjust.method="BH",
+                                                 p.value=0.05)) 
+# gene namelist
+genelist.edger <- rownames(DEdata[keep,][de==1 | de==-1,])
+@
+
+The top ten significant genes as found by the exact test are provided in table \ref{edgeR-top}. In total there are \Sexpr{sign.genes.edger[1]+sign.genes.edger[3]} genes significantly up- (\Sexpr{sign.genes.edger[3]}) or down- (\Sexpr{sign.genes.edger[1]}) regulated after controlling the FDR at 5\%. These genes are depicted in figure \ref{edgeR-de-genes} as the red dots. 
+
+<<edgeR-exacttest, include=T, results='asis',cache=TRUE, echo=FALSE>>=
+@
+
+\begin{figure}[H]
+  \centering
+<<edgeR-de-plot,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=4.5, fig.height=3>>=
+# Plot log-fold change against log-counts per million - DE genes highlighted:
+detags <- rownames(DEcounts)[as.logical(de)]
+plotSmear(et, de.tags=detags)
+abline(h=c(-2, 2), col="dodgerblue")
+@
+\caption{Plot of of the log-fold change against log-counts per million for edgeR. Significant genes (FDR 5\%) are highlighted in red. The blue lines indicate a log-fold change of two.}
+\label{edgeR-de-genes}
+\end{figure}
+
+\subsection{Non-parametric - SAMSeq results}
+<<samseq, include=FALSE, cache=TRUE, echo=FALSE>>=
+#################################################
+# SAMSeq
+#################################################
+library(samr)
+samfit.5 <- SAMseq(x = DEdata[keep,], y = c(rep('1',3),rep('2',3)), 
+                 resp.type = "Two class unpaired", nperms = 500,
+                 random.seed = 43893, nresamp = 100, fdr.output = 0.05)
+plot(samfit.5)
+
+samfit.5.nofilter <- SAMseq(x = DEdata, y = c(rep('1',3),rep('2',3)), 
+                 resp.type = "Two class unpaired", nperms = 500,
+                 random.seed = 43893, nresamp = 100, fdr.output = 0.05)
+plot(samfit.5.nofilter)
+
+samfit.20 <- SAMseq(x = DEdata[keep,], y = c(rep('1',3),rep('2',3)), 
+                          resp.type = "Two class unpaired", nperms = 500, 
+                          random.seed = 43893, nresamp = 100, fdr.output = 0.2)
+print(samfit.20)
+plot(samfit.20)
+
+samfit.20.nofilter <- SAMseq(x = DEdata, y = c(rep('1',3),rep('2',3)), 
+                          resp.type = "Two class unpaired", nperms = 500, 
+                          random.seed = 43893, nresamp = 100, fdr.output = 0.2)
+plot(samfit.20.nofilter)
+
+# retrieve list of significant gene names
+genelist.samseq.5 <- c(samfit.5$siggenes.table$genes.up[,2],
+                 samfit.5$siggenes.table$genes.lo[,2])
+genelist.samseq.5.nofilter <- c(samfit.5.nofilter$siggenes.table$genes.up[,2],
+                 samfit.5.nofilter$siggenes.table$genes.lo[,2])
+genelist.samseq.20 <- c(samfit.20$siggenes.table$genes.up[,2],
+                 samfit.20$siggenes.table$genes.lo[,2])
+genelist.samseq.20.nofilter <- c(samfit.20.nofilter$siggenes.table$genes.up[,2],
+                 samfit.20.nofilter$siggenes.table$genes.lo[,2])
+
+# create testresults matrix-like object for limma venn diagrams
+# (can decidetest be used on samseq output to make this easier?)
+# dont use DEdata[keep,] because then we cant compare filtered and unfiltered sets
+sam.5.testresults <- sapply(rownames(DEdata),
+                                   function(x) ifelse( x %in% genelist.samseq.5,1,0))
+sam.5.nofilter.testresults <- sapply(rownames(DEdata),
+                                   function(x) ifelse( x %in% genelist.samseq.5.nofilter,1,0))
+sam.20.testresults <- sapply(rownames(DEdata),
+                                   function(x) ifelse( x %in% genelist.samseq.20,1,0))
+sam.20.nofilter.testresults <- sapply(rownames(DEdata),
+                                   function(x) ifelse( x %in% genelist.samseq.20.nofilter,1,0))
+
+# How many filtered genes were called as significant?
+filtered.genelist <- rownames(DEdata[!keep,])
+
+sig.filter.5 <- sum(sapply(filtered.genelist,function(x) x %in% genelist.samseq.5.nofilter))
+sig.filter.20 <- sum(sapply(filtered.genelist,function(x) x %in% genelist.samseq.20.nofilter))
+
+# Comparison between filtered and unfiltered SAMSeq analysis
+sam5.vs.nofilter <- cbind(sam5nofilter=sam.5.nofilter.testresults,sam5=sam.5.testresults)
+sam20.vs.nofilter <- cbind(sam20nofilter=sam.20.nofilter.testresults,sam5=sam.20.testresults)
+sam5.vs.sam20 <- cbind(sam20=sam.20.testresults,sam5=sam.5.testresults)
+
+vennCounts(sam5.vs.nofilter)
+vennCounts(sam20.vs.nofilter)
+vennCounts(sam5.vs.sam20)
+# sum(is.element(genelist.samseq,genelist.edger))
+
+vennDiagram(vennCounts(cbind(samSeq5=sam.5.testresults,
+                             samSeq20=sam.20.testresults,
+                             samSeq5.nofilter=sam.5.nofilter.testresults,
+                             samSeq20.nofilter=sam.20.nofilter.testresults)),
+            include='both',
+            counts.col = c('red','dodgerblue'),
+            circle.col = c('red','dodgerblue','green','purple'))
+
+# Comparing SAMSeq with edgeR
+# need to use DEdata[keep,] for comparison with edgeR
+sam.5.testresults.filter <- sapply(rownames(DEdata[keep,]),
+                                   function(x) ifelse( x %in% genelist.samseq.5,1,0))
+sam.20.testresults.filter <- sapply(rownames(DEdata[keep,]),
+                                   function(x) ifelse( x %in% genelist.samseq.20,1,0))
+edger.vs.samseq.5 <- cbind(edgeR=as.numeric(de@.Data),samSeq5=sam.5.testresults.filter)
+edger.vs.samseq.20 <- cbind(edgeR=as.numeric(de@.Data),samSeq20=sam.20.testresults.filter)
+
+# Venn diagram counts
+vennCounts(edger.vs.samseq.5)
+vennCounts(edger.vs.samseq.20)
+
+vennDiagram(vennCounts(edger.vs.samseq.5),include='both',
+            counts.col = c('red','dodgerblue'),
+            circle.col = c('red','dodgerblue','green'))
+vennDiagram(vennCounts(edger.vs.samseq.20),include='both',
+            counts.col = c('red','dodgerblue'),
+            circle.col = c('red','dodgerblue','green'))
+# npseq  symmetric cutoffs, not available in windows?
+@
+
+We ran into a number of issues while performing the SAMSeq analysis. First, a 5\% FDR resulted in a set of significant genes that existed exclusively of up-regulated (filtered gene set) or down-regulated (unfiltered set) genes. After increasing the FDR to 20\%, this issue was resolved, but at the cost of many more false positives. 
+
+Second, the four different options (FDR 5/20\% and an (un-)filtered dataset) resulted in extremely heterogeneous results (figure \ref{samseq-filterplot}). Only thirty-one significant genes were shared between the analyses. Even for the same FDR value, there were large discrepancies between the filtered and unfiltered results. At 20\% FDR, \Sexpr{sig.filter.20} of the filtered genes were still found to be significant (\Sexpr{sig.filter.5} at 5\% FDR), while we would expect none of them to be significant due to the low counts. 
+
+These large inconsistencies indicate that the SAMSeq method is not reliable for our dataset. We will discuss possible causes and solutions for these problems in the discussion section.
+
+\begin{figure}[H]
+\centering
+<<samseq-plot-filter,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=6, fig.height=3>>=
+vennDiagram(vennCounts(cbind(samSeq5=sam.5.testresults,
+                             samSeq20=sam.20.testresults,
+                             samSeq5.nofilter=sam.5.nofilter.testresults,
+                             samSeq20.nofilter=sam.20.nofilter.testresults)),
+            include='both',cex=c(0.9,0.9,0.8),
+            counts.col = c('red','dodgerblue'),
+            circle.col = c('red','dodgerblue','green','purple'))
+@
+\caption{Venn diagram of the number of significant differentially expressed genes found by SAMSeq for an FDR of 5\% or 20 \% and using the entire or filtered dataset.}
+\label{samseq-filterplot}
+\end{figure}
+
+<<samseq-tables, include=T, results='asis',cache=TRUE, echo=FALSE>>=
+samseq.5.table <- as.data.frame(rbind(samfit.5$siggenes.table$genes.up,
+                                      samfit.5$siggenes.table$genes.lo))
+samseq.5.table <- samseq.5.table[order(samseq.5.table$`q-value(%)`),]
+# length(unique(samseq.5.table$`q-value(%)`))
+# length(samseq.5.table$`q-value(%)`)
+
+samseq.20.table <- as.data.frame(rbind(samfit.20$siggenes.table$genes.up,
+                                       samfit.20$siggenes.table$genes.lo))
+samseq.20.table <- samseq.20.table[order(samseq.20.table$`q-value(%)`),]
+# length(unique(samseq.20.table$`q-value(%)`))
+unique.20 <- length(samseq.20.table$`q-value(%)`)
+
+samseqtable<-xtable(cbind(samseq.5.table[1:10,-c(1,3)],samseq.20.table[1:10,-c(1,3)]),
+                    include.rownames=F,booktabs=T,
+caption=paste("Top ten differentially expressed genes based on SAMSeq at 5\\% (left) and 20\\% FDR (right) respectively."),
+             label="samseq-table")
+print(samseqtable,caption.placement = "top",table.placement = "H",size='scriptsize',
+      include.rownames=F)
+@
+
+For completeness, the top ten genes as reported by SAMSeq (after filtering), for 5 and 20\% FDR, are provided in table \ref{samseq-table}. Note that there were only 1 and \Sexpr{unique.20} unique q-values respectively, so the top ten genes are actually not that informative; all of the remaining genes are supposedly equally significant (in the case of 5\% FDR).
+
+\subsection{Transformation - voom and limma results}
+
+<<voom, include=FALSE, cache=TRUE, echo=FALSE>>=
+#################################################
+# limma + voom
+#################################################
+library(limma)
+dge <- DGEList(counts=DEdata,group=factor(groupLabels))
+dge <- dge[keep, , keep.lib.sizes=FALSE] # filter
+dge$samples$lib.size <- colSums(dge$counts) # recompute library sizes
+dge <- calcNormFactors(dge,method ="TMM") # normalisation
+
+# voom transform
+design <- model.matrix(~as.factor(groupLabels))
+v <- voom(dge,design,plot=TRUE)
+
+plotMDS(v)
+
+# limma model
+fit <- lmFit(v,design)
+fit <- eBayes(fit)
+
+# top ten genes
+limma.top <- topTable(fit,coef=ncol(design),
+                      adjust.method = "BH",number = 10)
+
+# number of significant genes
+all.limma <- topTable(fit,coef=ncol(design),
+                      adjust.method = "BH",
+                      number = dim(dge$counts)[1])
+sign.limma <- all.limma[all.limma$adj.P.Val<0.05,]
+dim(sign.limma)[1]
+# or look at treatment effect (ignore intercept)
+sign.genes.limma <- summary(de.limma <- decideTests(fit,
+                          adjust.method="BH",p.value=0.05)) 
+sign.genes.limma[,2]
+
+# gene namelist
+limma.toptable <- as.data.frame(limma.top[,-c(2,3,6)])
+limma.toptable <- cbind(rownames(limma.toptable),limma.toptable)
+colnames(limma.toptable)[1] <- "Genes"
+colnames(limma.toptable)[4] <- "FDR"
+
+# table with top 10 genes
+limma.tab <- xtable(limma.toptable,booktabs=T,
+              caption=paste("Top ten differentially expressed genes
+                            based on voom+limma."),
+              label="limma-top",
+              include.rownames=F)
+# volcanoplot(fit,coef = 2,highlight = dim(sign.limma)[1])
+@
+
+The mean-variance relation obtained by voom is shown in figure \ref{voom-var}. The top ten significant genes subsequently found by limma can be found in table \ref{limma-top}. In total there are \Sexpr{sign.genes.limma[1,2]+sign.genes.limma[3,2]} genes significantly up- (\Sexpr{sign.genes.limma[3,2]}) or down- (\Sexpr{sign.genes.limma[1,2]}) regulated when controlling the FDR at 5\%. A visual representation, similar to the one for EdgeR, is provided in figure \ref{limma-de-plot}.
+
+\begin{figure}[H]
+\centering
+<<voom-var,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=4.5, fig.height=3>>=
+voom(dge,design,plot=TRUE)
+@
+\caption{Mean-variance relation estimated by voom.}
+\label{voom-var}
+\end{figure}
+
+<<limmatables, include=T, results='asis',cache=TRUE, echo=FALSE>>=
+print(limma.tab,caption.placement = "top",table.placement = "H",include.rownames=F)
+@
+
+\begin{figure}[H]
+\centering
+<<voom-de-plot,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=4.5, fig.height=3>>=
+limma::plotMA(fit, main=NULL)
+# o <- order(fit$p.value[,2])
+# o <- all.limma[order(all.limma[,"adj.P.Val"]),]
+# x <- fit$Amean
+# y <- fit$coefficients[,2] 
+# points(x[o[1:dim(sign.limma)[1]]], 
+#        y[o[1:dim(sign.limma)[1]]],
+#        col='red',pch=19,cex=0.5)
+o <- all.limma[order(all.limma[,"adj.P.Val"]),][1:dim(sign.limma)[1],]
+x <- o$AveExpr
+y <- o$logFC
+points(x,y,col='red',pch=19,cex=0.5)
+abline(h=c(-2, 2), col="dodgerblue")
+@
+\caption{Plot of the log-fold change against log-counts per million for limma. Significant genes (FDR 5\%) are highlighted in red.}
+\label{limma-de-plot}
+\end{figure}
+
+\subsection{Bayesian - EBSeq}
+<<EBSeq, include=FALSE, cache=TRUE, echo=FALSE>>=
+#################################################
+# EBSeq
+#################################################
+library(EBSeq)
+# median normalisation of DESeq
+Sizes=MedianNorm(DEdata[keep,])
+Conditions <- as.factor(groupLabels)
+EBOut=EBTest(Data=as.matrix(DEdata[keep,]),Conditions=Conditions,
+             sizeFactors=Sizes, maxround=7)
+
+# check convergence
+EBOut$Alpha
+EBOut$Beta
+EBOut$P
+
+# bayesian fdr
+EBDERes=GetDEResults(EBOut, FDR=0.05)
+
+# two columns PPEE and PPDE, corresponding to the 
+# posterior probabilities of being EE or DE for each gene
+head(EBDERes$PPMat)
+# contains each gene's status called by EBSeq
+head(EBDERes$Status) 
+
+# top 10 genes
+ebseq.toptable <- as.data.frame(EBDERes$PPMat)
+ebseq.toptable <- ebseq.toptable[order(ebseq.toptable$PPDE,decreasing = T),]
+ebseq.toptable <- cbind(rownames(ebseq.toptable),ebseq.toptable)
+ebseq.toptable <- ebseq.toptable[,-2]
+colnames(ebseq.toptable)[1] <- "Genes"
+colnames(ebseq.toptable)[2] <- "Posterior P. DE"
+ebseq.tab <- xtable(ebseq.toptable[1:10,],booktabs=T,
+              caption=paste("Top ten differentially expressed genes based on EBSeq and their posterior probability of being differentially expressed."),
+              label="EBSeq-top",
+              include.rownames=F)
+
+# number of significant genes
+length(EBDERes$DEfound)
+length(EBDERes$Status[EBDERes$Status=='DE'])
+
+# test-results-like matrix
+EBSeq.testresults <- sapply(rownames(DEdata[keep,]),
+                                   function(x) ifelse( x %in% EBDERes$DEfound,1,0))
+@
+
+In total there were \Sexpr{length(EBDERes$DEfound)} genes that were found to be significantly up- or down-regulated when controlling the Bayesian FDR at 5\%. Almost all of these (\Sexpr{length(ebseq.toptable[ebseq.toptable$`Posterior P. DE`==1,1])}) had a posterior probability of one, so note that table \ref{EBSeq-top} is arbritrary in this sense, since the genes are merely sorted by their identifier.
+
+<<EBSeq-top, include=T, results='asis',cache=TRUE, echo=FALSE>>=
+print(ebseq.tab,caption.placement = "top",table.placement = "H",include.rownames=F)
+@
+
+%' \begin{figure}[H]
+%' \centering
+%' <<ebseq-de-plot,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=6, fig.height=4>>=
+%' PlotPostVsRawFC(EBOut,PostFC(EBOut))
+%' @
+%' \caption{Mean-variance relation as estimated by voom.}
+%' \label{ebseq-de-plot}
+%' \end{figure}
+
+\subsection{Agreement and differences between the methods}
+The following Venn diagram depicts the overlap among the set of differentially expressed genes that were reported as significant by the four methods (figure \ref{venn-all}). Because the SAMSeq method was performing poorly and resulted in extremely different results, we also created an overlap plot for only edgeR, voom+limma and EBSeq (figure \ref{venn-simple}).
+
+\begin{figure}[H]
+\centering
+<<venn-diagrams,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=5, fig.height=3.5>>=
+# PlotPostVsRawFC(EBOut,PostFC(EBOut))
+##############################
+# Venn Diagrams
+##############################
+gene.comparison <- cbind(edgeR=as.numeric(de@.Data),SAMSeq.20=sam.20.testresults.filter,
+                         SAMSeq.5=sam.5.testresults.filter,EBSeq=EBSeq.testresults,
+                         limma=as.numeric(de.limma@.Data[,2]))
+# Venn diagram counts
+vennCounts(gene.comparison)
+# Venn diagram plot
+vennDiagram(vennCounts(gene.comparison),include='both',
+            counts.col = c('red','dodgerblue'),
+            cex=c(0.9,0.9,0.8),
+            circle.col = c('red','dodgerblue','green','purple','yellow'))
+@
+\caption{The number of significantly differentially expressed genes (either up- or down-regulated) for edgeR, voom+limma, EBSeq (FDR 5\%) and SAMSeq (FDR 5 or 20\%).}
+\label{venn-all}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+<<venn-diagram-edge-limma-ebseq,include=TRUE, results='hide',cache=TRUE, echo=FALSE,fig.width=5, fig.height=3.5>>=
+# without SAMSeq
+vennDiagram(vennCounts(cbind(edgeR=as.numeric(de@.Data),
+                             EBSeq=as.numeric(EBSeq.testresults),
+                             limma=as.numeric(de.limma@.Data[,2]))),
+            include='both',counts.col = c('red','dodgerblue'),
+            cex=c(0.9,0.9,0.8),
+            circle.col = c('yellow','green','purple'))
+@
+\caption{The number of significantly differentially expressed genes (either up- or down-regulated) at FDR 5\% for edgeR, voom+limma and EBSeq.}
+\label{venn-simple}
+\end{figure}
+
+\section{Discussion}
+The multidimensional scaling plot in figure \ref{edgeR-mds} indicates that the samples are reasonably well separated, although it seems that each group has one observation which behaves slightly differently (separation according to second axis).
+
+Overall, there is quite a high degree of agreement between the parametric, Bayesian and transformation-based approaches (figure \ref{venn-simple}). This strengthens our confidence that the differentially expressed genes reported by these methods truly are so. We note that edgeR found \Sexpr{vennCounts(cbind(edgeR=as.numeric(de@.Data),EBSeq=as.numeric(EBSeq.testresults),limma=as.numeric(de.limma@.Data[,2])))[5,4]} unique genes, whereas EBSeq only found \Sexpr{vennCounts(cbind(edgeR=as.numeric(de@.Data),EBSeq=as.numeric(EBSeq.testresults),limma=as.numeric(de.limma@.Data[,2])))[3,4]} and limma did not find any. This might simply reflect the fact that edgeR reported almost half as many genes (\Sexpr{sign.genes.edger[1]+sign.genes.edger[3]}) as EBSeq (\Sexpr{length(EBDERes$DEfound)}) and limma (\Sexpr{sign.genes.limma[1,2]+sign.genes.limma[3,2]}). In the comparison by \textcite{soneson_comparison_2013} edgeR proved to be too liberal for small sample sizes as well. This is also, at least partly, consistent with the results of \textcite{seyednasrollah_comparison_2015}: in their simulation studies both edgeR and EBSeq proved to be too liberal and reported many more false positives than limma.
+
+Looking at the top set of genes reported by edgeR (table \ref{edgeR-top}) and limma (table \ref{limma-top}), we see the same ones popping up. For EBSeq the list is a bit different (table \ref{EBSeq-top}), but this is an artefact of the internal sorting of the method, since a large portion of genes shared the same posterior probability.
+
+% edgeR liberal for small samples soneson
+% 
+% SAMSeq: low power small sample sizes sonneseon + seyednasrollah
+% 
+% more replicates, differences between methods decrease \textcite{seyednasrollah_comparison_2015}.
+
+The non-parametric SAMSeq method did not perform adequately in this analysis, but this was to be expected since it has poor power for small sample sizes \autocite{seyednasrollah_comparison_2015,soneson_comparison_2013}. However, it was still striking to observe that at a reasonable FDR cut-off of 5\%, the method reported only up- or down-regulated genes, but never both. This issue has since been addressed by one of the authors, in the form of another package npSeq \autocite{li2011using}. It implements the same methods that were described in the original SAMSeq paper \autocite{li_finding_2013}, but with symmetric, rather than asymmetric cut-offs for the non-parametric statistic. This could avoid the problem of exclusively finding up- or down-regulated genes, and instead find both simultaneously. Unfortunately this package was only available for Linux platforms at the time of writing, so we did not try it out.
+Moreover, the fact that filtering had such a drastic effect on the called genes and that the overall agreement between different FDR cut-off values was so low, also shows how unstable this method was for our analysis (figure \ref{samseq-filterplot}). Lastly, we want to address our arbitrary choice of number of permutations and resampling rounds. We did not find any recommendations, apart from the default values implemented in the package. We increased these to be on the safe side, but a safer method would have been to slowly increase the number of simulations and evaluate when the results started to converge. 
+
+The dangers of a low number of samples are not merely limited to the non-parametric method and we should be cautious for the other methods too. It is interesting that limma performs well in our dataset, despite the fact that it also suffers from low power for small sample sizes \autocite{soneson_comparison_2013}. The tendency of edgeR to be too liberal also decreases with growing sample size. 
+
+% Finally, the discrete nature of the q-values, due to the permutation-based methods, also make it difficult to choose a reasonable top set of genes (since more genes than the intended number might share a q-value).
+
+In general, all the methods become more similar and stable for increasing sample sizes \autocite{seyednasrollah_comparison_2015}. However, the optimal method still depends on the experimental conditions (heterogeneity of the sample, outliers, sample size) \autocite{soneson_comparison_2013}. The choice of method will also depend on the complexity of the experimental design. In this regard, the non-parametric SAMSeq method has an advantage, but limma and edgeR also offer support for this. Lastly, the final choice of method can in general be guided by practical issues as well, such as the availability of in-depth documentation and case-studies.
+
+\clearpage
+\printbibliography
+
+\appendix
+\section{Source code}
+<<all-code, ref.label=all_labels()[-1], echo=TRUE, eval=FALSE, tidy=T,highlight=T,tidy.opts=list(blank=F, width.cutoff=40)>>=
+@
+
+\end{document}
