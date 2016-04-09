@@ -10,9 +10,9 @@ My aims throughout this venture were multifold. First, it gave me the chance to 
 Quick links
 -----------
 
-- [Tandem MS database search tool](\MS2-database-search\): A python tool and Jupyter notebook documentation.
-- [Connectivity scores](\connectivity-scores\): Integration of connectivity scores of gene expression data and clustering on chemical structure of compounds. R markdown document and analysis.
-- [RNA-seq differential expression analysis](\RNA-Seq\): A Sweave/knitr R report comparing various R packages for differential expression analysis of RNA-seq data (edgeR, SAMSeq, EBSeq, voom+limma).
+- [Tandem MS database search tool](MS2-database-search/): A python tool and Jupyter notebook documentation.
+- [Connectivity scores](connectivity-scores/): Integration of connectivity scores of gene expression data and clustering on chemical structure of compounds. R markdown document and analysis.
+- [RNA-seq differential expression analysis](RNA-Seq/): A Sweave/knitr R report comparing various R packages for differential expression analysis of RNA-seq data (edgeR, SAMSeq, EBSeq, voom+limma).
 - [Machine learning - metabolic signature](\CIMB\Metabolic signature.R): R analysis using machine learning methods to build a classifier based on metabolic data.
-- [Analysis of differential gene expression](\CIMB\): Some notes on multiple testing and bootstrap/permutation methods for micro-array expression data.
-- [Bootstrap methods](\CIM\): Some Jupyter notebooks showcasing how bootstrap methods work (hypothesis testing and confidence intervals).
+- [Analysis of differential gene expression](CIMB/): Some notes on multiple testing and bootstrap/permutation methods for micro-array expression data.
+- [Bootstrap methods](CIM/): Some Jupyter notebooks showcasing how bootstrap methods work (hypothesis testing and confidence intervals).
