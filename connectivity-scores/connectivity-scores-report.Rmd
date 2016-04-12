@@ -21,14 +21,18 @@ set.seed(718453)
 
 ## Unraveling the connection between chemical structure and gene expression.
 
-The aim of this analysis is to investigate the association between the structure of chemical compounds (or their predicted biological activity) and the effects they induce in a gene expression assay. We will group compounds with a similar structure (*chemical fingerprint*) or predicted bio-activity (*target prediction*) using clustering methods. Subsequently the *gene expression profiles* of the compounds within a cluster will be contrasted with each other using a connectivity score approach based on the work of @lamb_connectivity_2006 and @zhang_simple_2008 on the [Connectivity Map](https://www.broadinstitute.org/cmap/). 
+The aim of this analysis is to investigate the association between the structure of chemical compounds (or their predicted biological activity) and the effects they induce in a gene expression assay. We will group compounds with a similar structure (*chemical fingerprint*) or predicted bio-activity (*target prediction*) using clustering methods. Subsequently the *gene expression profiles* of the compounds within and between clusters will be contrasted with each other using a connectivity score approach based on the work of @lamb_connectivity_2006 and @zhang_simple_2008 on the [Connectivity Map](https://www.broadinstitute.org/cmap/). 
 
-Their methods enable us to contrast a number of query expression profiles with a set of reference profiles and assess the *connectivity* between compounds in terms of which genes are regulated up or down. The connection between the query and reference data can be both positive and negative. In the former case, highly up-regulated genes in one set will also be up-regulated in the other set, and vice versa for down-regulated genes. In the latter case, genes with a high expression in one assay, might be strongly down-regulated in the other one. Both situations imply that the two compounds interfere with the same biological processes. If two sets are weakly connected, there is no correlation or overlap between the top genes of either set. We will use an extension of these methods that scores the connectivity between gene expression profiles using *multiple factor analysis* (MFA). In a nutshell, we will look at the principal axes of variation in the gene expression profiles and we hope to find components where both the reference and the query compounds have a high contribution. 
+Their methods enable us to contrast a number of query expression profiles with a set of reference profiles and assess the *connectivity* between compounds in terms of which genes are regulated up or down. The connection between the query and reference data can be both positive and negative (see figure below, adapted from [@lamb_connectivity_2006]). In the former case, highly up-regulated genes in one set will also be up-regulated in the other set, and vice versa for down-regulated genes. In the latter case, genes with a high expression in one assay, might be strongly down-regulated in the other one. Both situations imply that the two compounds interfere with the same biological processes. If two sets are weakly connected, there is no correlation or overlap between the top genes of either set. We will use an extension of these methods that scores the connectivity between gene expression profiles using *multiple factor analysis* (MFA) [@abdi_multiple_2013]. In a nutshell, we will look at the principal axes of variation in the gene expression profiles and we hope to find components where both the reference and the query compounds have a high contribution. 
 
-The dataset we will focus on is the Connectivity Map's MCF-7 dataset, where the gene-wide expression profiles for a breast cancer cell line when exposed to several bio-active small molecules. The chemical fingerprints and and target predictions of these compounds was provided as well.
+![lamb-connect](lamb-connectivity.png "Connectivity")
+
+The dataset we will focus on is the Connectivity Map's MCF-7 dataset, which contains the gene-wide expression profiles for a breast cancer cell line that was exposed to several bio-active molecules. The chemical fingerprints and target predictions of these compounds were provided as well.
 
 ## Clustering chemical compounds based on chemical fingerprints
-We will employ hierarchical clustering to group the chemical compounds based on their fingerprints or target predictions. In either case we are dealing with a 0/1 matrix where the rows correspond to different compounds. For the chemical fingerprints the columns indicate the presence or absence of specific chemical structures. Together this sequence of ones and zeros describes the entire molecular scaffolding of the compound. In essence we are dealing with a bit string for each compound.
+We will employ hierarchical clustering to group the chemical compounds based on their fingerprints or target predictions. In either case we are dealing with a binary 0/1 matrix where the rows correspond to different compounds. 
+
+For the chemical fingerprints the columns indicate the presence or absence of specific chemical structures. Together this sequence of ones and zeros describes the entire molecular scaffolding of the compound. In essence we are dealing with a bit string for each compound.
 
 Similarly, the binary target prediction matrix indicates whether or not a certain compound is predicted to bind to a certain molecular target, such as enzymes.
 
@@ -42,18 +46,13 @@ head(fingerprintMat[,1:4])
 
 To properly cluster objects based on binary attributes, we need to define an adequate measure of similarity. The *Tanimoto coefficient* (sometimes called the *Jaccard coefficient*) is often used for this purpose in cheminformatics [[@maccuish_clustering_2011]](#chem). It contrasts two objects *x* and *y* of dimension *k* in terms of the number of common attributes, *c* versus the number of attributes unique to either object, *a* and *b*. $$s = \frac{c}{a+b-c}$$
 
-*To do: difference in definitions of Tanimoto, jaccard and soergel distance!*
 
 <!-- *** -->
-
+<!-- *To do: difference in definitions of Tanimoto, jaccard and soergel distance!* -->
 <!-- http://www.sequentix.de/gelquest/help/distance_measures.htm -->
-
 <!-- https://en.wikipedia.org/wiki/Jaccard_index Various forms of functions described as Tanimoto similarity and Tanimoto distance occur in the literature and on the Internet. Most of these are synonyms for Jaccard similarity and Jaccard distance, but some are mathematically different.  -->
-
 <!-- https://books.google.be/books?id=ZDDNBQAAQBAJ&pg=PA41&lpg=PA41&dq=tanimoto+clustering&source=bl&ots=vsLen2ZmS5&sig=N16boAKkB5NWLJjeteC4shM6Brc&hl=en&sa=X&ved=0ahUKEwiaiZvsx4vLAhWBfxoKHf-9DrwQ6AEISzAH#v=onepage&q=tanimoto%20clustering&f=false Soergel distance -->
-
 <!-- https://docs.tibco.com/pub/spotfire/6.0.0-november-2013/userguide-webhelp/hc/hc_tanimoto_coefficient.htm another different formula! -->
-
 <!-- *** -->
 
 Its complement ($1-s$), the *Soergel distance*, is what we will use for our clustering approach. This is what the distance matrix of the compounds based on their fingerprints will look like:
@@ -74,14 +73,14 @@ tanimoto = function(m){
 dist.fingerprintMat <- tanimoto(fingerprintMat)
 head(dist.fingerprintMat[,1:4])
 
-# alternative in base r?
+# alternative in base r? Slightly different formula?
 # test.dist.fingerprintMat <- as.matrix(dist(fingerprintMat,method = 'binary'))
 # test.dist.fingerprintMat == dist.fingerprintMat
 ```
 
 Now we can go ahead and try to cluster these compounds based on their (dis)similarity in chemical fingerprints. We will use the `agnes` function provided by the `cluster` package, which implements a basic agglomerative hierarchical clustering analysis. Agglomerative hierarchical clustering attempts to form groups of similar objects through a bottom-up approach (as opposed to divisive methods). It starts by assigning each observation to its own cluster. Then, an hierarchy is created by repeatedly merging pairs of similar clusters at lower levels (i.e. those that are close according to our *distance* measure), until a single cluster is formed at the top level. Not only do we require an appropriate measure of distance, like the Tanimoto distance, but we also need to choose an agglomeration method. This method will define how the distance between clusters is calculated: e.g. do we only look at the largest distance between its members or do we take the average of all pairwise distances? We will try both the average method, which strikes a compromise between compactness and closeness of the clusters, and the flexible-Beta, a method often used in ecology (with $\alpha = 0.625$). 
 
-<!-- For this analysis we will choose the average method, which strikes a compromise between compactness and closeness of the clusters. -->
+### Average linkage
 
 By applying this method to the Tanimoto distance matrix of the compound chemical fingerprints we obtain the following dendogram. Note that the height of each node signifies the dissimilarity between its daughter clusters.
 
@@ -98,7 +97,7 @@ pltree(cluster.a.fingerprintMat,main='Hierarchical clustering of compounds based
 axis(side = 2, at = seq(0, 400, 100), col = "#F38630", labels = TRUE, lwd = 2)
 ```
 
-Next, we need to decide on an appropriate number of clusters and prune the tree to this size. This is different from other cluster methods, such as k-means clustering, where the number of clusters is defined beforehand. We could eyeball it by looking at the dendogram, but in practise it is more appropriate to define the number of clusters based on the distance between certain groups. The Gap statistic can be used to make a more informed decision about this [@hastie_elements_2009-1]. The `cluster` package provides a method to calculate the Gap statistic using a bootstrap approach. Visually we are looking for a kink or elbow in a plot of the gap statistic versus the number of clusters. This indicates that the decrease in within-cluster similarity is levelling off. More formally we will rely on the `TibshiraniSEmax` criterium.
+Next, we need to decide on an appropriate number of clusters and prune the tree to this size. This is different from other cluster methods, such as k-means clustering, where the number of clusters is defined beforehand. We could eyeball it by looking at the dendogram, but in practice it is more appropriate to define the number of clusters based on the distance between certain groups. The Gap statistic can be used to make a more informed decision about this [@hastie_elements_2009-1]. The `cluster` package provides a method to calculate the Gap statistic using a bootstrap approach. Visually we are looking for a kink or elbow in a plot of the gap statistic versus the number of clusters. This indicates that the decrease in within-cluster similarity is levelling off. More formally we will rely on the `TibshiraniSEmax` criterium.
 
 ```{r}
 FUNcluster = function(x,k,inputcluster){
@@ -133,6 +132,8 @@ maxSE(iris.gapdata[,3],iris.gapdata[,4],"Tibs2001SEmax")
 ```
 
 Unfortunately, the criteria suggests that we should only utilise one cluster. This can also be seen in the dendogram, where most splits tend to occur at a similar level of distance. 
+
+### Flexible link
 
 Now let's try the flexible beta agglomeration method.
 
@@ -193,11 +194,11 @@ sapply(unique(cut.cluster.targetMat), function(x) colnames(geneMat)[cut.cluster.
 
 ## Connectivity scoring using multiple factor analysis
 
-Now that we have identified clusters of compounds that are similar in terms of their structure (chemical fingerprint or target prediction), we will investigate whether or not they are also similar according to the gene expression profiles they induce *in vitro*. To do this, we will use MFA to compare the gene expression profile of a certain compound (the query) with the profiles of all the other compounds in its cluster (the reference database), i.e. a leave-one-out approach. This will be done once for each compound in a cluster, for every cluster we defined earlier. Afterwards, it might also be interesting to contrast entire clusters with one another, i.e. by using one cluster as a query dataset and comparing it with the other clusters, i.e. a leave-one-cluster-out method.
-
-**The question we are interested in is if the same genes are being regulated in the same or opposite way for the compounds in a cluster, i.e. if there is a connection between chemical structure and biological effects.**
+Now that we have identified clusters of compounds that are similar in terms of their structure (chemical fingerprint or target prediction), we will investigate whether or not they are also similar according to the gene expression profiles they induce *in vitro*. To do this, we will use MFA to compare the gene expression profile of a certain compound (the query) with the profiles of all the other compounds in its cluster (the reference database), i.e. a leave-one-out approach to evaluate the within-cluster connectivity. This will be done once for each compound in a cluster, for every cluster we defined earlier. Afterwards, it might also be interesting to contrast entire clusters with one another, i.e. by using one cluster as a query dataset and comparing it with the other clusters, i.e. the between cluster connectivity.
 
 ### Within cluster connectivity
+
+**The question we are interested in is if the same genes are being regulated in the same or opposite way for the compounds in a cluster, i.e. if there is a connection between chemical structure and biological effects.**
 
 #### Demo for first cluster
 
@@ -207,7 +208,7 @@ As a proof of concept, we shall perform the leave-one-out procedure on the first
 colnames(geneMat)[cut.cluster.fingerprintMat == 1]
 ```
 
-We define the set of reference profiles as all the compounds in the cluster, except for one (*metformin* in this example). Next, the query set contains all the compounds in the cluster. This can be thought of conceptually as treating the reference set as the known profile or the profile of interest, and searching for similar profiles in the query set. For the MFA, it is important to keep in mind that the compounds are treated as variables or features, whereas the genes are observations. The genes are shared between the reference and query set, but the variables will differ. 
+We first define the set of reference profiles as all the compounds in the cluster, except for one (*metformin* in this example). Next, the query set contains all the compounds in the cluster. This can be thought of conceptually as treating the reference set as the known profile or the profile of interest, and searching for similar profiles in the query set. For the MFA, it is important to keep in mind that the compounds are treated as variables or features, whereas the genes are observations. The genes are shared between the reference and query set, but the variables (compounds) will differ. 
 
 ```{r}
 refMat <- geneMat[,cut.cluster.fingerprintMat==1][,-c(1)]
@@ -216,7 +217,7 @@ colnames(refMat)
 colnames(querMat)
 ```
 
-In the first step, MFA will normalize both the reference and query dataset by dividing each by their first singular value. Next, a PCA is performed on the combined datasets. This will creates principal axes of variations, which are orthogonal and still explain the entire structure of the data. The principal axes, often called components or factors, are linear combinations of the original variables (or compounds in our setting). We are hoping to find high contributions, termed loadings, of the reference compounds to the first factor and also a high loading of the left out compound on this factor if it is also similar in gene expression. The factor loadings are the actual connectivity scores we are interested in.
+In the first step, MFA will normalize both the reference and query dataset by dividing each by their first singular value. Next, a PCA is performed on the combined datasets. This will creates principal axes of variations, which are orthogonal and still explain the entire structure of the data. The principal axes, often called components or factors, are linear combinations of the original variables (or compounds in our setting). We hope to find high contributions, termed loadings, of the reference compounds to a factor and also a high loading of the left out compound on this factor. This would mean that it is also similar in terms of gene expression. The factor loadings are the actual connectivity scores we are interested in. The coordinates of the observations (genes) are called factor scores. The subset of compounds and genes with high factor loadings and scores are called a connectivity set.
 
 We will repeat the MFA, each time leaving out another compound of the cluster in the reference set. Afterwards, we will average the connectivity scores of the left-out compounds, and use this as the global connectivity score within the cluster.
 
@@ -232,17 +233,17 @@ library(CSFA)
 factor1.out_MFA <-  CSanalysis(refMat, querMat,"CSmfa",which=c(2,3),factor.plot=1,plot.type='sweave')
 ```
 
-Already things have become a bit more complex. As you can see in the first plot showing the loadings for the different factors, there is no single factor with high loadings for all of the compounds, which is what we would expect if all the reference compounds are indeed inducing similar gene expression profiles. This indicates that there is no single dominating structure in the reference dataset, **rather there are multiple sub-structures, corresponding to only a few compounds of the reference set**. We call these substructures connectivity sets. 
+Already things have become a bit more complex. As you can see in the first plot showing the loadings for the different factors, there is no single factor with high loadings for all of the compounds, which is what we would expect if all the reference compounds are indeed inducing similar gene expression profiles. This indicates that there is no single dominating structure in the reference dataset, rather there are multiple sub-structures, corresponding to only a few compounds of the reference set. We call these substructures connectivity sets. 
 
-For example, the largest structure is dominated by the compounds phenformin and phenyl biguanide, whereas the second is made up of tioguanine and **tetraethylenepentamine???**. 
+For example, the largest structure is dominated by the compounds phenformin and phenyl biguanide, whereas the second is made up of tioguanine and tetraethylenepentamine. 
 
-**As such there are also multiple connectivity scores for the left out compound, metformin, each belonging to a different connectivity set. For example, the connectivity score for metformin for the first connectivity set is about 0.1.**
+As such there are also multiple connectivity scores for the left out compound, metformin, each belonging to a different connectivity set. For example, the connectivity score for metformin for the first connectivity set is about 0.1.
 
 ```{r,}
 factor1.out_MFA@CS$CS.query
 ```
 
-**We could also look at the second component, which is a set consisting of tioguanine (high) and tetraethylenepentamine (low). For this connectivity set metformin scores a bit higher, with a loading around 0.6**
+We could also look at the second component, which is a set consisting of tioguanine (high) and tetraethylenepentamine (low). For this connectivity set metformin scores a bit higher, with a loading around 0.6.
 
 ```{r,results='hide'}
 factor2.out_MFA <-  CSanalysis(refMat, querMat,"CSmfa",which=c(),factor.plot=2,plot.type='sweave')
@@ -251,13 +252,6 @@ factor2.out_MFA <-  CSanalysis(refMat, querMat,"CSmfa",which=c(),factor.plot=2,p
 ```{r}
 factor2.out_MFA@CS$CS.query
 ```
-
-<!-- **Question! What are the CSrankscores? They look similar to the loadings, but small values are reduced to zero?** -->
-
-<!-- ```{r} -->
-<!-- factor1.out_MFA@CSRankScores -->
-<!-- factor2.out_MFA@CSRankScores -->
-<!-- ``` -->
 
 #### Within-connectivity based on fingerprint clustering
 Now we will perform this leave-one-out and average procedure for each fingerprint-based cluster, leaving out a single compound each time.
@@ -290,7 +284,7 @@ for (j in rownames(fingerprintMat[cut.cluster.fingerprintMat==1,,drop=F])){
 }
 ```
 
-And for the second component (note: the print-out of CSanalysis is not suppressed unfortunately):
+The same can be done for the second component (note: the print-out of CSanalysis is not suppressed unfortunately):
 
 ```{r fingerprint_pc2,warning=F}
 # b <- connectivity.fingerprint[[1]][[1]][['MFA']]
@@ -340,21 +334,10 @@ for (j in rownames(fingerprintMat[cut.cluster.fingerprintMat==1,,drop=F])){
 <!-- } -->
 <!-- ``` -->
 
-Let's calculate the average connectivity for the clusters for the first and second component separately. We will use the mean of the absolute values as the connectivity measure, but it could be argued that the reverse, the absolute value of the mean is more appropriate. The difference is whether compounds with opposite effects on gene expression will be considered similar or not.
-
-<!-- ```{r,eval=F,include=F} -->
-<!-- # Test for average loop -->
-<!-- test <- connectivity.fingerprint[[1]] -->
-<!-- test[['metformin']][['MFA']]@CS$CS.query['metformin',] -->
-<!-- test[['phenformin']][['MFA']]@CS$CS.query['phenformin',] -->
-
-<!-- sapply(seq_along(test), function(x,n) test[[x]][['MFA']]@CS$CS.query[n[x],] ,n=names(test)) -->
-
-<!-- test2 <- connectivity.fingerprint[[2]] -->
-<!-- sapply(seq_along(test2), function(x,n) test2[[x]][['MFA']]@CS$CS.query[n[x],] ,n=names(test2)) -->
-<!-- ``` -->
 
 ##### Average within-cluster connectivity plots for fingerprints
+
+Let's calculate the average connectivity for the clusters for the first and second component separately. We will use the mean of the absolute values as the connectivity measure, but it could be argued that the reverse, the absolute value of the mean is more appropriate. The difference is whether compounds with opposite effects on gene expression will be considered similar or not.
 
 The average scores for each cluster are shown below:
 
@@ -376,59 +359,20 @@ test.average.connectivity.fingerprint.pc1 <- abs(sapply(sapply(connectivity.fing
 plot(test.average.connectivity.fingerprint.pc1,xlab='Cluster',ylab='Average connectivity score for PC1')
 ```
 
-<!-- sweave test -->
-<!-- ```{r} -->
-<!-- CSanalysis(connectivity.fingerprint[[1]][[1]][['refMat']], -->
-<!--                     connectivity.fingerprint[[1]][[1]][['querMat']], -->
-<!--                     "CSmfa",factor.plot=1,which=c(2,3), -->
-<!--                     result.available=connectivity.fingerprint[[1]][[1]][['MFA']],plot.type='sweave') -->
-<!-- ``` -->
-
-<!-- ```{r} OLD LOOP FRAMEWORK--> 
-<!-- # Loop framework to use later... -->
-<!-- n.cluster <- unique(cut.cluster.fingerprintMat) # number of clusters -->
-
-<!-- connectivity.fingerprint <- vector('list',length(n.cluster)) # initialize list to store connectivity scores -->
-
-<!-- for (i in n.cluster) { -->
-<!--   compounds.in.cluster <- rownames(fingerprintMat[cut.cluster.fingerprintMat==i,,drop=F]) -->
-<!--   connectivity.fingerprint[[i]] <- sapply( c('average',compounds.in.cluster), function(j) NULL) -->
-<!--   connectivity.fingerprint[[i]][['compounds']] <- compounds.in.cluster -->
-<!-- } -->
-
-<!-- ptm <- proc.time() -->
-<!-- for (i in 1:length(connectivity.fingerprint)) { # loop through clusters -->
-<!--   sum <- 0 -->
-<!--   for (j in 1:length(connectivity.fingerprint[[i]]$compounds)) { # loop through compounds in a cluster -->
-<!--     refMat <- geneMat[,connectivity.fingerprint[[i]]$compounds[-c(j)]] -->
-<!--     querMat <- geneMat[,connectivity.fingerprint[[i]]$compounds] -->
-<!--     connectivity.fingerprint[[i]][[connectivity.fingerprint[[i]]$compounds[[j]]]] <- CSanalysis(refMat,querMat,"CSmfa",which=c(),factor.plot=1) -->
-  <!--   sum <- sum + connectivity.fingerprint[[i]][[connectivity.fingerprint[[i]]$compounds[[j]]]][connectivity.fingerprint[[i]]$compounds[[j]],] -->
-  <!-- } -->
-  <!-- connectivity.fingerprint[[i]]$average <- sum/j -->
-<!-- } -->
-<!-- proc.time() - ptm -->
-<!-- ``` -->
-
-<!-- ```{r,eval=F} -->
-<!-- # old plotting tool when averages were stored in list -->
-<!-- plot(sapply(connectivity.fingerprint, function(x) x$average),xlab='Cluster',ylab='Average connectivity score') -->
-<!-- ``` -->
-
 Cluster 7 looks the most promising, it consists of the following compounds:
 
 ```{r}
 colnames(geneMat)[cut.cluster.fingerprintMat == 7]
 ```
 
-And the query loadings are similar to the reference loadings for each leave-one-out iteration:
+<!-- And the query loadings are similar to the reference loadings for each leave-one-out iteration: -->
 
-```{r}
-for (j in rownames(fingerprintMat[cut.cluster.fingerprintMat==7,,drop=F])){
-  print(paste('Query compound is',j))
-  print(connectivity.fingerprint[[7]][[j]][['MFA']]@CS$CS.query)
-}
-```
+<!-- ```{r} -->
+<!-- for (j in rownames(fingerprintMat[cut.cluster.fingerprintMat==7,,drop=F])){ -->
+<!--   print(paste('Query compound is',j)) -->
+<!--   print(connectivity.fingerprint[[7]][[j]][['MFA']]@CS$CS.query) -->
+<!-- } -->
+<!-- ``` -->
 
 <!-- The plots for cluster 7 are shown below: -->
 
@@ -461,14 +405,14 @@ For the second component, which likely represents a weaker structure than the fi
 colnames(geneMat)[cut.cluster.fingerprintMat == 1]
 ```
 
-And the query loadings are similar to the reference loadings for each leave-one-out iteration:
+<!-- And the query loadings are similar to the reference loadings for each leave-one-out iteration: -->
 
-```{r, warning=F}
-for (j in rownames(fingerprintMat[cut.cluster.fingerprintMat==1,,drop=F])){
-  print(paste('Query compound is',j))
-  print(redo_MFA_fingerprint_within(1,j,2)@CS$CS.query)
-}
-```
+<!-- ```{r, warning=F} -->
+<!-- for (j in rownames(fingerprintMat[cut.cluster.fingerprintMat==1,,drop=F])){ -->
+<!--   print(paste('Query compound is',j)) -->
+<!--   print(redo_MFA_fingerprint_within(1,j,2)@CS$CS.query) -->
+<!-- } -->
+<!-- ``` -->
 
 #### Within-cluster connectivity based on target predictions
 
@@ -532,6 +476,29 @@ for (i in 1:length(connectivity.target)) { # loop through clusters
 proc.time() - ptm
 ```
 
+##### Average within-cluster connectivity plots for target predictions
+
+The average connectivity scores for the first and second components are calculated below:
+
+```{r target_within_MFA_average_connectivity_pc1}
+average.connectivity.target.pc1 <- sapply(sapply(connectivity.target, function(y) sapply(seq_along(y), function(x,n) y[[x]][['MFA']]@CS$CS.query[n[x],] ,n=names(y))),  function(z) mean(abs(z)))
+
+plot(average.connectivity.target.pc1,xlab='Cluster',ylab='Average connectivity score for PC1')
+```
+
+```{r target_within_MFA_average_connectivity_pc2, warning=F,results='hide'}
+average.connectivity.target.pc2 <- sapply(sapply(seq_along(connectivity.target), 
+       function(y) sapply(seq_along(connectivity.target[[y]]),
+                          function(x,n) redo_MFA_target_within(y,n[x],2)@CS$CS.query[n[x],] ,
+                          n=names(connectivity.target[[y]]))),  function(z) mean(abs(z)))
+```
+
+```{r target_within_MFA_average_connectivity_pc2_plot}
+plot(average.connectivity.target.pc2,xlab='Cluster',ylab='Average connectivity score target prediction PC2')
+```
+
+Cluster 3 looks interesting based on the first component, but when considering the structure defined by the second component, cluster 1 is most similar.
+
 Let's check out the third cluster, which contains a number of known antipsychotic drugs:
 
 ```{r}
@@ -580,67 +547,27 @@ for (j in rownames(targetMat)[cut.cluster.targetMat==3,drop=F]){
 <!-- } -->
 <!-- ``` -->
 
-##### Average within-cluster connectivity plots for target predictions
+<!-- ```{r, warning=F} -->
+<!-- for (j in rownames(targetMat)[cut.cluster.targetMat==3,drop=F]){ -->
+<!--   print(paste('Query compound is',j)) -->
+<!--   print(mean(abs(redo_MFA_target_within(3,j,2)@CS$CS.query$Factor2))) -->
+<!-- } -->
+<!-- mean(abs(redo_MFA_target_within(3,j,2)@CS$CS.query$Factor2)) -->
 
-The average connectivity scores for the first and second components are calculated below:
+<!-- # cluster 3 has a relatively low within-connectivity score for the second factor -->
+<!-- # but is much larger when considering the set as a whole! -->
+<!-- mean(abs(CSanalysis(connectivity.target.betw[[3]][['refMat']], -->
+<!--                     connectivity.target.betw[[3]][['querMat']], -->
+<!--                     "CSmfa",factor.plot=2,which=c(2,3), -->
+<!--                     result.available=connectivity.target.betw[[3]][['MFA']], -->
+<!--                     plot.type='sweave')@CS$CS.ref$Factor2)) -->
+<!-- ``` -->
 
-```{r target_within_MFA_average_connectivity_pc1}
-average.connectivity.target.pc1 <- sapply(sapply(connectivity.target, function(y) sapply(seq_along(y), function(x,n) y[[x]][['MFA']]@CS$CS.query[n[x],] ,n=names(y))),  function(z) mean(abs(z)))
-
-plot(average.connectivity.target.pc1,xlab='Cluster',ylab='Average connectivity score for PC1')
-```
-
-```{r target_within_MFA_average_connectivity_pc2, warning=F,results='hide'}
-average.connectivity.target.pc2 <- sapply(sapply(seq_along(connectivity.target), 
-       function(y) sapply(seq_along(connectivity.target[[y]]),
-                          function(x,n) redo_MFA_target_within(y,n[x],2)@CS$CS.query[n[x],] ,
-                          n=names(connectivity.target[[y]]))),  function(z) mean(abs(z)))
-```
-
-```{r target_within_MFA_average_connectivity_pc2_plot}
-plot(average.connectivity.target.pc2,xlab='Cluster',ylab='Average connectivity score target prediction PC2')
-```
-
-Cluster 3 looks interesting based on the first component, but when considering the structure defined by the second component, cluster 1 is most similar.
-
-```{r warning=F}
-for (j in rownames(targetMat)[cut.cluster.targetMat==1,drop=F]){
-  print(paste('Query compound is',j))
-  print(redo_MFA_target_within(1,j,2)@CS$CS.query)
-}
-```
-
-```{r, warning=F}
-for (j in rownames(targetMat)[cut.cluster.targetMat==3,drop=F]){
-  print(paste('Query compound is',j))
-  print(mean(abs(redo_MFA_target_within(3,j,2)@CS$CS.query$Factor2)))
-}
-mean(abs(redo_MFA_target_within(3,j,2)@CS$CS.query$Factor2))
-
-# cluster 3 has a relatively low within-connectivity score for the second factor
-# but is much larger when considering the set as a whole!
-mean(abs(CSanalysis(connectivity.target.betw[[3]][['refMat']],
-                    connectivity.target.betw[[3]][['querMat']],
-                    "CSmfa",factor.plot=2,which=c(2,3),
-                    result.available=connectivity.target.betw[[3]][['MFA']],
-                    plot.type='sweave')@CS$CS.ref$Factor2))
-```
-
-#### Visualisation
+#### Visualisation for within-cluster connectivity based on target predictions
 
 The following plots attempt to visualise the patterns for the third cluster based on target predictions. As we saw, the average connectivity based on the first component was quite large for this cluster. This means that all the compounds in this cluster likely induce a similar gene expression. This can be seen from the fact that the left-out cluster always has a relatively high loading compared to the references. The only deviating compounds are verapamil and amitriptyline.
 
 ```{r, results='hide',include=T}
-# nam <- rownames(targetMat)[cut.cluster.targetMat==3,drop=F]
-# names(connectivity.target[[3]])
-# t<-CSanalysis(connectivity.target[[3]][[nam[1]]][['refMat']],connectivity.target[[3]][[nam[1]]][['querMat']],
-#            "CSmfa",factor.plot=1,which=c(1,2,3,4,5),result.available=connectivity.target[[3]][[nam[1]]][['MFA']],
-#            plot.type='sweave')
-# t@CS$CS.query
-# 
-# plot(connectivity.target[[3]][[nam[1]]][['MFA']]@CS$CS.query$Factor1)
-
-
 library(scales)
 library(ggplot2)
 library(ggrepel)
@@ -668,7 +595,6 @@ for (i in 1:length(compound.names)){
   scale_y_continuous(name="Compound Loadings - Factor 1") +
   ggtitle(paste("Cluster",3,"- Left out compound",compound.names[i])) + theme_bw() )
 }
-
 ```
 
 We can do the same for the first cluster and the second component:
@@ -709,29 +635,33 @@ refMat <- geneMat[,cut.cluster.fingerprintMat==7]
 querMat <- geneMat[,cut.cluster.fingerprintMat!=7]
 colnames(refMat)
 colnames(querMat)
-betw.finger.factor1.demo <-  CSanalysis(refMat, querMat,"CSmfa",which=c(2,3),factor.plot=1,plot.type='sweave')
+```
 
+```{r between_finger_demo_cluster_7_plots,results='hide'}
 # which = 4 gene scores for certain factor
 # which =3, gene scores for both factors at once + loadings for both factors
 # 5 factor 1 loadings
 # 2 both loadings
 # 6 expression profiles selection
+betw.finger.factor1.demo <-  CSanalysis(refMat, querMat,"CSmfa",which=c(2,3),factor.plot=1,plot.type='sweave')
 ```
 
-The figure showing the compounds according to the component loadings is of most interest. We can see that the reference compounds have similar loadings in both components, which was to be expected because of the high intra-cluster similarity we observed before. Any of the query compounds or clusters that have high loadings (in either component) represent a connectivity set: a local structure in the gene expression data of the reference set.
+The first figure showing the compounds according to the component loadings is of most interest. We can see that the reference compounds have similar loadings in both components, which was to be expected because of the high intra-cluster similarity we observed before. Any of the query compounds or clusters that have high loadings (in either component) represent a connectivity set: a local structure in the gene expression data of the reference set.
 
 The loadings for the queries, per cluster, for the first component are:
 
 ```{r between_finger_demo_loadings}
 sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),])
+```
 
+```{r between_finger_demo_loadings_plot,results='hide'}
 loadings <- CSanalysis(refMat,querMat,"CSmfa",factor.plot=1,which=c(5),
                     result.available=betw.finger.factor1.demo,plot.type='sweave')
 ```
 
 When we look at the averaged absolute values per cluster, for the first component, it seems that the third cluster is most similar to the reference cluster 7.
 
-```{r between_finger_demo_loadings_averages}
+```{r between_finger_demo_loadings_averages,results='hide'}
 sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor1.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(x) mean(abs(x)))
 ```
 
@@ -753,7 +683,9 @@ sapply(n.cluster.fingerprint, function(y) betw.finger.factor2.demo@CS$CS.query[c
 
 ```{r between_finger_demo_loadings_pc2_average}
 sapply(sapply(n.cluster.fingerprint, function(y) betw.finger.factor2.demo@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(x) mean(abs(x)))
+```
 
+```{r between_finger_demo_loadings_pc2_average_plot,results='hide'}
 genes<-CSanalysis(refMat,querMat,"CSmfa",factor.plot=2,which=c(4),
                     result.available=betw.finger.factor2.demo,plot.type='sweave')
 ```
@@ -801,7 +733,7 @@ for (i in c(3,7)) {
 
 ##### Average between-cluster connectivity for fingerprints
 
-The average connectivity between clusters based on the first component is (per cluster):
+The average connectivity between fingerprints clusters, based on the first component is (per cluster) depicted in the following table. The columns indicate the reference cluster and the rows are the averaged query loadings.
 
 ```{r}
 # inner sapply y retrieves query loadings per cluster
@@ -829,8 +761,6 @@ redo_MFA_fingerprint_between = function(cluster,factor){
   return(mfa)
 }
 betw.avg.connectivity.finger.pc2 <- sapply(n.cluster.fingerprint, function(x) sapply(sapply(n.cluster.fingerprint, function(y) redo_MFA_fingerprint_between(x,2)@CS$CS.query[colnames(geneMat[,cut.cluster.fingerprintMat==y]),]),function(z) mean(abs(z))))
-# ## Warning in .local(refMat, querMat, type, ...): CS, GS and CSRankScores Slot
-## in CSresult will be overwritten due to different factor choice.
 ```
 ```{r}
 betw.avg.connectivity.finger.pc2
@@ -838,6 +768,7 @@ betw.avg.connectivity.finger.pc2
 
 #### Between-connectivity based on target predictions
 
+Now we'll perform the same procedures as before, but for the clusters which were based on target predictions. 
 
 ```{r target_betw_MFA,results='hide'}
 connectivity.target.betw <- lapply(n.cluster.target, function(x) NULL)
@@ -852,27 +783,27 @@ for (i in 1:length(connectivity.target.betw)) { # loop through clusters
 proc.time() - ptm
 ```
 
-We plot the figures for each cluster-reference set:
+<!-- We plot the figures for each cluster-reference set: -->
 
-```{r}
-plot_MFA_target_between = function(cluster,factor){
-  # Plots result for already calculated MFA objects
-  mfa <- CSanalysis(connectivity.target.betw[[cluster]][['refMat']],
-                    connectivity.target.betw[[cluster]][['querMat']],
-                    "CSmfa",factor.plot=factor,which=c(2,3),
-                    result.available=connectivity.target.betw[[cluster]][['MFA']],
-                    plot.type='sweave')
-  return(mfa)
-}
-for (i in 1:length(n.cluster.target)){
-  print(paste('Reference cluster is',i))
-  plot_MFA_target_between(i,1)
-}
-```
+<!-- ```{r} -->
+<!-- plot_MFA_target_between = function(cluster,factor){ -->
+<!--   # Plots result for already calculated MFA objects -->
+<!--   mfa <- CSanalysis(connectivity.target.betw[[cluster]][['refMat']], -->
+<!--                     connectivity.target.betw[[cluster]][['querMat']], -->
+<!--                     "CSmfa",factor.plot=factor,which=c(2,3), -->
+<!--                     result.available=connectivity.target.betw[[cluster]][['MFA']], -->
+<!--                     plot.type='sweave') -->
+<!--   return(mfa) -->
+<!-- } -->
+<!-- for (i in 1:length(n.cluster.target)){ -->
+<!--   print(paste('Reference cluster is',i)) -->
+<!--   plot_MFA_target_between(i,1) -->
+<!-- } -->
+<!-- ``` -->
 
 ##### Average between-cluster connectivity for target predictions
 
-The average connectivity between clusters based on the first component is (per cluster):
+The average connectivity between target prediction clusters based on the first component is (per cluster):
 
 ```{r}
 # columns indicate reference cluster
@@ -892,15 +823,16 @@ redo_MFA_target_between = function(cluster,factor){
   return(mfa)
 }
 betw.avg.connectivity.target.pc2 <- sapply(n.cluster.target, function(x) sapply(sapply(n.cluster.target, function(y) redo_MFA_target_between(x,2)@CS$CS.query[colnames(geneMat[,cut.cluster.targetMat==y]),]),function(z) mean(abs(z))))
-# ## Warning in .local(refMat, querMat, type, ...): CS, GS and CSRankScores Slot
-## in CSresult will be overwritten due to different factor choice.
 ```
 ```{r}
 betw.avg.connectivity.target.pc2
 ```
 
 ### Visualisation of between-cluster connectivity
-```{r,warning=F,results='hide'}
+
+Consider again the third target-based cluster consisting of known antipsychotic drugs. Can we visualise how well connected it is to the other clusters? In the following plot any of the query compounds or clusters that have high loadings represent a connectivity set: a local structure in the gene expression data of the reference set.
+
+```{r,warning=F,results='hide',warning=F}
 mfa <- CSanalysis(connectivity.target.betw[[3]][['refMat']],
                     connectivity.target.betw[[3]][['querMat']],
                     "CSmfa",factor.plot=1,which=c(),
@@ -912,23 +844,128 @@ df <- df[order(df$clusters),]
 df.ref <- mfa@CS$CS.ref
 df.ref$clusters <- as.factor(3)
 df <- rbind(df.ref,df)
-
-ggplot(df,aes(x=seq_along(Factor1),y=Factor1,
+print(ggplot(df,aes(x=seq_along(Factor1),y=Factor1,
                            label=rownames(df))) +
-geom_point(aes(colour=clusters),size=6) +
-geom_point(colour = "black",shape=1,size=6) +
-geom_text_repel(aes(colour=clusters),show.legend = F,box.padding = unit(0.5, "lines"))+
-scale_colour_brewer(name='Clusters',palette='Set1',
+geom_point(aes(colour=clusters),size=4) +
+geom_point(colour = "black",shape=1,size=4) +
+geom_text_repel(aes(colour=clusters),size=3,show.legend = F,box.padding = unit(0.4, "lines"))+
+scale_colour_brewer(name='Clusters',palette='Dark2',
                     labels=levels(df$clusters)) +
-scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") + 
+scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") +
 scale_y_continuous(name="Compound Loadings - Factor 1") +
-ggtitle(paste("Reference cluster 3")) + theme_bw()
+ggtitle(paste("Reference cluster 3 - target predictions - factor 1")) + theme_bw())
 ```
+
+<!-- ```{r,warning=F,results='hide'} -->
+<!-- mfa <- CSanalysis(connectivity.target.betw[[3]][['refMat']], -->
+<!--                     connectivity.target.betw[[3]][['querMat']], -->
+<!--                     "CSmfa",factor.plot=1,which=c(), -->
+<!--                     result.available=connectivity.target.betw[[3]][['MFA']], -->
+<!--                     plot.type='sweave') -->
+<!-- df <- mfa@CS$CS.query -->
+<!-- df$clusters <- as.factor(cut.cluster.targetMat[!cut.cluster.targetMat==3]) -->
+<!-- df <- df[order(df$clusters),] -->
+<!-- df.ref <- mfa@CS$CS.ref -->
+<!-- df.ref$clusters <- as.factor(3) -->
+<!-- df <- rbind(df.ref,df) -->
+
+<!-- ggplot(df,aes(x=seq_along(Factor1),y=Factor1, -->
+<!--                            label=rownames(df))) + -->
+<!-- geom_point(aes(colour=clusters),size=6) + -->
+<!-- geom_point(colour = "black",shape=1,size=6) + -->
+<!-- geom_text_repel(aes(colour=clusters),show.legend = F,box.padding = unit(0.5, "lines"))+ -->
+<!-- scale_colour_brewer(name='Clusters',palette='Set1', -->
+<!--                     labels=levels(df$clusters)) + -->
+<!-- scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") +  -->
+<!-- scale_y_continuous(name="Compound Loadings - Factor 1") + -->
+<!-- ggtitle(paste("Reference cluster 3")) + theme_bw() -->
+<!-- ``` -->
 
 <!-- ```{r} -->
 <!-- connectivity.target -->
 <!-- plot(sapply(connectivity.target, function(x) x$average),xlab='Cluster',ylab='Average connectivity score based on target prediction') -->
 <!-- ``` -->
+
+Which genes are driving this connectivity? 
+
+```{r,warning=F,results='hide',warning=F,fig.height=5}
+mfa <- CSanalysis(connectivity.target.betw[[3]][['refMat']],
+                    connectivity.target.betw[[3]][['querMat']],
+                    "CSmfa",factor.plot=1,which=c(4),
+                    result.available=connectivity.target.betw[[3]][['MFA']],
+                    plot.type='sweave')
+```
+  
+```{r,warning=F,results='hide',warning=F,fig.height=5}
+mfa <- CSanalysis(connectivity.target.betw[[3]][['refMat']],
+                    connectivity.target.betw[[3]][['querMat']],
+                    "CSmfa",factor.plot=2,which=c(4),
+                    result.available=connectivity.target.betw[[3]][['MFA']],
+                    plot.type='sweave')
+```
+
+Next, we do the same for the seventh cluster based on chemical fingerprints.
+
+
+```{r,warning=F,results='hide',warning=F}
+mfa <- CSanalysis(connectivity.fingerprint.betw[[7]][['refMat']],
+                    connectivity.fingerprint.betw[[7]][['querMat']],
+                    "CSmfa",factor.plot=1,which=c(),
+                    result.available=connectivity.fingerprint.betw[[7]][['MFA']],
+                    plot.type='sweave')
+df <- mfa@CS$CS.query
+df$clusters <- as.factor(cut.cluster.fingerprintMat[!cut.cluster.fingerprintMat==7])
+df <- df[order(df$clusters),]
+df.ref <- mfa@CS$CS.ref
+df.ref$clusters <- as.factor(7)
+df <- rbind(df.ref,df)
+print(ggplot(df,aes(x=seq_along(Factor1),y=Factor1,
+                           label=rownames(df))) +
+geom_point(aes(colour=clusters),size=4) +
+geom_point(colour = "black",shape=1,size=4) +
+geom_text_repel(aes(colour=clusters),size=3,show.legend = F,box.padding = unit(0.4, "lines"))+
+scale_colour_brewer(name='Clusters',palette='Dark2',
+                    labels=levels(df$clusters)) +
+scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") +
+scale_y_continuous(name="Compound Loadings - Factor 1") +
+ggtitle(paste("Reference cluster 7 - fingerprints - factor 1")) + theme_bw())
+```
+
+```{r,warning=F,results='hide',warning=F,fig.height=5}
+mfa <- CSanalysis(connectivity.fingerprint.betw[[7]][['refMat']],
+                    connectivity.fingerprint.betw[[7]][['querMat']],
+                    "CSmfa",factor.plot=1,which=c(4),
+                    result.available=connectivity.fingerprint.betw[[7]][['MFA']],
+                    plot.type='sweave')
+```
+
+Finally, consider the first cluster and its second component. Upon closer examination, the uniformity of this cluster seems rather low.  
+
+```{r,warning=F,results='hide',warning=F}
+mfa <- CSanalysis(connectivity.fingerprint.betw[[1]][['refMat']],
+                    connectivity.fingerprint.betw[[1]][['querMat']],
+                    "CSmfa",factor.plot=2,which=c(),
+                    result.available=connectivity.fingerprint.betw[[1]][['MFA']],
+                    plot.type='sweave')
+df <- mfa@CS$CS.query
+df$clusters <- as.factor(cut.cluster.fingerprintMat[!cut.cluster.fingerprintMat==1])
+df <- df[order(df$clusters),]
+df.ref <- mfa@CS$CS.ref
+df.ref$clusters <- as.factor(7)
+df <- rbind(df.ref,df)
+print(ggplot(df,aes(x=seq_along(Factor2),y=Factor2,
+                           label=rownames(df))) +
+geom_point(aes(colour=clusters),size=4) +
+geom_point(colour = "black",shape=1,size=4) +
+geom_text_repel(aes(colour=clusters),size=3,show.legend = F,box.padding = unit(0.4, "lines"))+
+scale_colour_brewer(name='Clusters',palette='Dark2',
+                    labels=levels(df$clusters)) +
+scale_x_continuous(breaks=pretty_breaks(),name="Compound Index") +
+scale_y_continuous(name="Compound Loadings - Factor 1") +
+ggtitle(paste("Reference cluster 1 - fingerprints - factor 2")) + theme_bw())
+```
+
+To conclude, we will note that some of the clusters would have shown a much higher within-connectivity, if not for a few outlying compounds. Different clustering methods might result in more promising results. Furthermore, it is not trivial to choose a factor or whether multiple factors should be combined for proper evaluation.
 
 <!-- ## Between cluster connectivity -->
 

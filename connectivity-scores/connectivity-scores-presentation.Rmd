@@ -113,7 +113,7 @@ cut.cluster.targetMat <- cutree(cluster.targetMat,k=k.target)
 
 # Connectivity scores using multiple factor analysis
 
-## Multiple factor analysis
+## Multiple factor analysis (Abdi et al., 2013)
 - Normalize both the reference and query dataset by dividing each by their first singular value.
 - PCA is performed on the combined datasets.
 - Factor loadings of compounds represent importance or **connectivity score**.
@@ -633,6 +633,16 @@ ggtitle(paste("Reference cluster 7 - fingerprints - factor 1")) + theme_bw())
 
 ----
 
+```{r,warning=F,results='hide',warning=F,fig.height=5}
+mfa <- CSanalysis(connectivity.fingerprint.betw[[7]][['refMat']],
+                    connectivity.fingerprint.betw[[7]][['querMat']],
+                    "CSmfa",factor.plot=1,which=c(4),
+                    result.available=connectivity.fingerprint.betw[[7]][['MFA']],
+                    plot.type='sweave')
+```
+
+----
+
 ```{r,warning=F,results='hide',warning=F}
 mfa <- CSanalysis(connectivity.fingerprint.betw[[1]][['refMat']],
                     connectivity.fingerprint.betw[[1]][['querMat']],
@@ -659,29 +669,26 @@ ggtitle(paste("Reference cluster 1 - fingerprints - factor 2")) + theme_bw())
 
 # Concluding remarks
 
-## 
-
 ## A better cluster method might improve the results
 
 Some of the clusters would have shown a much higher within-connectivity, if not for a few outlying compounds.
 
 ## It is not trivial to choose a factor.
 
+Should factors even be chosen? Or could a combined view be more useful?
+
 ## References
 <section style="text-align: left;">
 <small>
 
+- Abdi, Herv�, Lynne J. Williams, and Domininique Valentin. 2013. "Multiple Factor Analysis: Principal Component Analysis for Multitable and Multiblock Data Sets." Wiley Interdisciplinary Reviews: Computational Statistics 5 (2): 149-79. doi:10.1002/wics.1246.
 
 - Hastie, Trevor, Robert Tibshirani, and J. H. Friedman. 2009. The Elements of Statistical Learning: Data Mining, Inference, and Prediction. 2nd ed. Springer Series in Statistics. New York, NY: Springer.
 
-
-- Lamb, J. 2006. “The Connectivity Map: Using Gene-Expression Signatures to Connect Small Molecules, Genes, and Disease.” Science 313 (5795): 1929–35. doi:10.1126/science.1132939.
-
+- Lamb, J. 2006. "The Connectivity Map: Using Gene-Expression Signatures to Connect Small Molecules, Genes, and Disease." Science 313 (5795): 1929-35. doi:10.1126/science.1132939.
 
 - MacCuish, John D., and Norah E. MacCuish. 2011. Clustering in Bioinformatics and Drug Discovery. Chapman & Hall/CRC Mathematical and Computational Biology Series. Boca Raton, FL: CRC Press.
 
-
-- Zhang, Shu-Dong, and Timothy W Gant. 2008. “A Simple and Robust Method for Connecting Small-Molecule Drugs Using Gene-Expression Signatures.” BMC Bioinformatics 9 (1): 258. doi:10.1186/1471-2105-9-258.
-
+- Zhang, Shu-Dong, and Timothy W Gant. 2008. "A Simple and Robust Method for Connecting Small-Molecule Drugs Using Gene-Expression Signatures." BMC Bioinformatics 9 (1): 258. doi:10.1186/1471-2105-9-258.
 
 </small>
